@@ -16,6 +16,7 @@ class Main(Star):
     def __init__(self, context: Context) -> None:
         super().__init__(context)
         self.PLUGIN_NAME = "astrbot_plugin_essential"
+        self.context = context
 
         if not os.path.exists(f"data/{self.PLUGIN_NAME}_data.json"):
             with open(f"data/{self.PLUGIN_NAME}_data.json", "w", encoding="utf-8") as f:
@@ -24,6 +25,10 @@ class Main(Star):
             self.data = json.loads(f.read())
         self.good_morning_data = self.data.get("good_morning", {})
         self.good_morning_cd = {}
+        self.active_sessions = self.data.get("active_sessions", [])
+        self.last_broadcast_date = self.data.get("last_broadcast_date", "")
+
+        asyncio.create_task(self.daily_broadcast())
 
     def check_good_morning_cd(self, user_id: str, current_time: datetime.datetime) -> bool:
         if user_id not in self.good_morning_cd:
@@ -36,6 +41,47 @@ class Main(Star):
     def update_good_morning_cd(self, user_id: str, current_time: datetime.datetime):
         self.good_morning_cd[user_id] = current_time
 
+    def save_data(self):
+        with open(f"data/{self.PLUGIN_NAME}_data.json", "w", encoding="utf-8") as f:
+            self.data["good_morning"] = self.good_morning_data
+            self.data["active_sessions"] = self.active_sessions
+            self.data["last_broadcast_date"] = self.last_broadcast_date
+            f.write(json.dumps(self.data, ensure_ascii=False, indent=2))
+
+    async def daily_broadcast(self):
+        while True:
+            try:
+                now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+                current_hour = now.hour
+                current_date = now.strftime("%Y-%m-%d")
+
+                if self.last_broadcast_date != current_date:
+                    self.last_broadcast_date = current_date
+                    self.save_data()
+
+                messages = {
+                    0: "晚上12点咯，还不睡吗",
+                    6: "早上6点咯，有没有起床的",
+                    8: "8点咯，起床吃早饭咯",
+                    12: "中午了，该吃午饭了",
+                    17: "下午好啊各位",
+                    20: "晚上8点了，该准备睡觉咯",
+                    22: "睡觉咯各位"
+                }
+
+                if current_hour in messages:
+                    message = messages[current_hour]
+                    for session_id in self.active_sessions:
+                        try:
+                            await self.context.send_message(session_id, message)
+                        except Exception as e:
+                            logger.error(f"发送定时播报失败: {e}")
+
+                await asyncio.sleep(60)
+            except Exception as e:
+                logger.error(f"定时播报任务出错: {e}")
+                await asyncio.sleep(60)
+
     @filter.regex(r"^(早安|晚安)")
     async def good_morning(self, message: AstrMessageEvent):
         umo_id = message.unified_msg_origin
@@ -43,6 +89,10 @@ class Main(Star):
         user_name = message.message_obj.sender.nickname
         curr_utc8 = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
         curr_human = curr_utc8.strftime("%Y-%m-%d %H:%M:%S")
+
+        if umo_id not in self.active_sessions:
+            self.active_sessions.append(umo_id)
+            self.save_data()
 
         if self.check_good_morning_cd(user_id, curr_utc8):
             return CommandResult().message("你刚刚已经说过早安/晚安了，请30分钟后再试喵~").use_t2i(False)
