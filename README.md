@@ -6,6 +6,8 @@
 - 早安/晚安记录
 - 王者战力查询
 - 腾讯元宝助手
+- DeepSeek-3.2助手
+- DeepSeek-3.1助手
 
 安装方法：
 ```
@@ -28,6 +30,14 @@ plugin i https://github.com/520TinyXI/d-g-n-c-j.git
   - 支持数学计算、知识问答、闲聊等
   - 示例：`腾讯元宝 1+1`
   - 示例：`腾讯元宝 你是谁`
+- `deep3.2 <提问内容>`：调用DeepSeek-3.2助手进行问答
+  - 支持数学计算、知识问答、编程帮助等
+  - 示例：`deep3.2 1+1`
+  - 示例：`deep3.2 你是谁`
+- `deep3.1 <提问内容>`：调用DeepSeek-3.1助手进行问答
+  - 支持数学计算、知识问答、编程帮助等
+  - 示例：`deep3.1 1+1`
+  - 示例：`deep3.1 你是谁`
 
 功能说明：
 - **早安/晚安记录**：记录用户的睡眠时间，培养良好作息习惯
@@ -41,3 +51,13 @@ plugin i https://github.com/520TinyXI/d-g-n-c-j.git
   - 使用第三方API：https://api.jkyai.top/API/yuanbao.php
   - 支持数学计算、知识问答、闲聊等功能
   - 支持异步请求，不会阻塞其他请求
+- **DeepSeek-3.2助手**：调用DeepSeek-3.2大模型进行智能问答
+  - 使用第三方API：https://api.jkyai.top/API/depsek3.2.php
+  - 支持数学计算、知识问答、编程帮助等功能
+  - 支持异步请求，不会阻塞其他请求
+  - 拥有128K上下文长度，支持处理文件（需平台开启）
+- **DeepSeek-3.1助手**：调用DeepSeek-3.1大模型进行智能问答
+  - 使用第三方API：https://api.jkyai.top/API/depsek3.1.php
+  - 支持数学计算、知识问答、编程帮助等功能
+  - 支持异步请求，不会阻塞其他请求
+  - 深度求索Terminus最新版本，响应速度快

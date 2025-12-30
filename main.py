@@ -12,7 +12,7 @@ from astrbot.api.star import register, Star
 logger = logging.getLogger("astrbot")
 
 
-@register("D-G-N-C-J", "Tinyxi", "早晚安记录+王者战力查询+腾讯元宝", "1.0.0", "")
+@register("D-G-N-C-J", "Tinyxi", "早晚安记录+王者战力查询+腾讯元宝+DeepSeek-3.2+DeepSeek-3.1", "1.0.0", "")
 class Main(Star):
     def __init__(self, context: Context) -> None:
         super().__init__(context)
@@ -229,6 +229,78 @@ class Main(Star):
         except Exception as e:
             logger.error(f"请求腾讯元宝助手时发生错误：{e}")
             return CommandResult().error(f"请求腾讯元宝助手时发生错误：{str(e)}")
+
+    @filter.command("deep3.2")
+    async def deepseek_32(self, message: AstrMessageEvent):
+        """DeepSeek-3.2助手，支持异步请求"""
+        msg = message.message_str.replace("deep3.2", "").strip()
+        
+        if not msg:
+            return CommandResult().error("正确指令：deep3.2 <提问内容>\n\n示例：deep3.2 1+1")
+        
+        question = msg.strip()
+        
+        api_url = "https://api.jkyai.top/API/depsek3.2.php"
+        params = {
+            "question": question
+        }
+        
+        try:
+            timeout = aiohttp.ClientTimeout(total=60)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(api_url, params=params) as resp:
+                    if resp.status != 200:
+                        return CommandResult().error("请求DeepSeek-3.2助手失败，服务器返回错误状态码")
+                    
+                    result = await resp.text()
+                    
+                    return CommandResult().message(result)
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            return CommandResult().error("无法连接到DeepSeek-3.2助手服务器，请稍后重试或检查网络连接")
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            return CommandResult().error("请求超时，请稍后重试")
+        except Exception as e:
+            logger.error(f"请求DeepSeek-3.2助手时发生错误：{e}")
+            return CommandResult().error(f"请求DeepSeek-3.2助手时发生错误：{str(e)}")
+
+    @filter.command("deep3.1")
+    async def deepseek_31(self, message: AstrMessageEvent):
+        """DeepSeek-3.1助手，支持异步请求"""
+        msg = message.message_str.replace("deep3.1", "").strip()
+        
+        if not msg:
+            return CommandResult().error("正确指令：deep3.1 <提问内容>\n\n示例：deep3.1 1+1")
+        
+        question = msg.strip()
+        
+        api_url = "https://api.jkyai.top/API/depsek3.1.php"
+        params = {
+            "question": question
+        }
+        
+        try:
+            timeout = aiohttp.ClientTimeout(total=60)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(api_url, params=params) as resp:
+                    if resp.status != 200:
+                        return CommandResult().error("请求DeepSeek-3.1助手失败，服务器返回错误状态码")
+                    
+                    result = await resp.text()
+                    
+                    return CommandResult().message(result)
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            return CommandResult().error("无法连接到DeepSeek-3.1助手服务器，请稍后重试或检查网络连接")
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            return CommandResult().error("请求超时，请稍后重试")
+        except Exception as e:
+            logger.error(f"请求DeepSeek-3.1助手时发生错误：{e}")
+            return CommandResult().error(f"请求DeepSeek-3.1助手时发生错误：{str(e)}")
 
     async def terminate(self):
         """插件卸载/重载时调用"""
