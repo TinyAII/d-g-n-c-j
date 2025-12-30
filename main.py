@@ -146,54 +146,6 @@ class Main(Star):
                 .use_t2i(False)
             )
 
-    @filter.command("战力查询")
-    async def king_glory_power_query(self, message: AstrMessageEvent):
-        """王者荣耀战力查询器"""
-        msg = message.message_str.replace("战力查询", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：战力查询 英雄名称\n\n示例：战力查询 小乔")
-        
-        hero_name = msg.strip()
-        
-        api_url = "https://www.sapi.run/hero/select.php"
-        params = {
-            "hero": hero_name,
-            "type": "aqq"
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=10)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error("查询王者战力失败，服务器返回错误状态码")
-                    
-                    data = await resp.json()
-                    
-                    if data.get("code") == 200 and "data" in data:
-                        hero_data = data["data"]
-                        
-                        output = f"{hero_data.get('name', '')}\n"
-                        output += f"国服最低：{hero_data.get('guobiao', '')}\n"
-                        output += f"省标最低：{hero_data.get('provincePower', '')}\n"
-                        output += f"市标最低：{hero_data.get('cityPower', '')}\n"
-                        output += f"区标最低：{hero_data.get('areaPower', '')}"
-                        
-                        return CommandResult().message(output)
-                    else:
-                        return CommandResult().error(f"未找到英雄战力信息：{data.get('msg', '未知错误')}")
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到王者战力查询服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("查询超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"查询王者战力时发生错误：{e}")
-            return CommandResult().error(f"查询王者战力时发生错误：{str(e)}")
-
     @filter.command("腾讯元宝")
     async def tencent_yuanbao(self, message: AstrMessageEvent):
         """腾讯元宝助手，支持异步请求"""
