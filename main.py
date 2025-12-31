@@ -631,6 +631,51 @@ class Main(Star):
             logger.error(f"请求讯飞AI助手时发生错误：{e}")
             return CommandResult().error(f"请求讯飞AI助手时发生错误：{str(e)}")
 
+    @filter.event_message_type(filter.EventMessageType.ALL)
+    async def default_message_handler(self, message: AstrMessageEvent):
+        """默认消息处理，当没有匹配到任何命令时调用deep3.2"""
+        msg = message.message_str.strip()
+        
+        # 检查是否匹配任何已有的命令
+        commands = [
+            "腾讯元宝", "deep3.2", "deep3.1", "gpt5", "克劳德", "通义千问", 
+            "deepR1", "智谱", "夸克", "蚂蚁", "豆包", "gpt", "谷歌", "阿里", "讯飞"
+        ]
+        
+        for cmd in commands:
+            if msg.startswith(cmd):
+                # 如果匹配到已有的命令，不处理，交给对应的命令处理函数
+                return
+        
+        # 如果没有匹配到任何命令，调用deep3.2的处理逻辑
+        question = msg
+        
+        api_url = "https://api.jkyai.top/API/depsek3.2.php"
+        params = {
+            "question": question
+        }
+        
+        try:
+            timeout = aiohttp.ClientTimeout(total=60)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(api_url, params=params) as resp:
+                    if resp.status != 200:
+                        return CommandResult().error("请求DeepSeek-3.2助手失败，服务器返回错误状态码")
+                    
+                    result = await resp.text()
+                    
+                    return CommandResult().message(result)
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            return CommandResult().error("无法连接到DeepSeek-3.2助手服务器，请稍后重试或检查网络连接")
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            return CommandResult().error("请求超时，请稍后重试")
+        except Exception as e:
+            logger.error(f"请求DeepSeek-3.2助手时发生错误：{e}")
+            return CommandResult().error(f"请求DeepSeek-3.2助手时发生错误：{str(e)}")
+
     async def terminate(self):
         """插件卸载/重载时调用"""
         pass
