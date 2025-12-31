@@ -5,7 +5,6 @@ import urllib.parse
 from astrbot.api.all import AstrMessageEvent, CommandResult, Context, Plain
 import astrbot.api.event.filter as filter
 from astrbot.api.star import register, Star
-from astrbot.api.event.filter import EventMessageType
 
 logger = logging.getLogger("astrbot")
 
@@ -631,57 +630,6 @@ class Main(Star):
         except Exception as e:
             logger.error(f"请求讯飞AI助手时发生错误：{e}")
             return CommandResult().error(f"请求讯飞AI助手时发生错误：{str(e)}")
-
-    @filter.event_message_type(EventMessageType.ALL)
-    async def default_deep32(self, message: AstrMessageEvent):
-        """默认使用deep3.2模型处理所有未匹配其他命令的消息"""
-        # 获取所有已有的命令前缀
-        command_prefixes = [
-            "腾讯元宝", "deep3.2", "deep3.1", "gpt5", "克劳德", "通义千问",
-            "deepR1", "智谱", "夸克", "蚂蚁", "豆包", "gpt", "谷歌", "阿里", "讯飞"
-        ]
-        
-        msg = message.message_str.strip()
-        
-        # 检查消息是否包含任何已有的命令前缀
-        has_command_prefix = False
-        for prefix in command_prefixes:
-            if msg.startswith(prefix):
-                has_command_prefix = True
-                break
-        
-        # 如果没有命令前缀，使用deep3.2处理
-        if not has_command_prefix and msg:
-            question = msg
-            
-            api_url = "https://api.jkyai.top/API/depsek3.2.php"
-            params = {
-                "question": question
-            }
-            
-            try:
-                timeout = aiohttp.ClientTimeout(total=60)
-                async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.get(api_url, params=params) as resp:
-                        if resp.status != 200:
-                            return CommandResult().error("请求DeepSeek-3.2助手失败，服务器返回错误状态码")
-                        
-                        result = await resp.text()
-                        
-                        return CommandResult().message(result)
-                            
-            except aiohttp.ClientError as e:
-                logger.error(f"网络连接错误：{e}")
-                return CommandResult().error("无法连接到DeepSeek-3.2助手服务器，请稍后重试或检查网络连接")
-            except asyncio.TimeoutError:
-                logger.error("请求超时")
-                return CommandResult().error("请求超时，请稍后重试")
-            except Exception as e:
-                logger.error(f"请求DeepSeek-3.2助手时发生错误：{e}")
-                return CommandResult().error(f"请求DeepSeek-3.2助手时发生错误：{str(e)}")
-        
-        # 如果有命令前缀，不处理，让对应的命令处理函数处理
-        return None
 
     async def terminate(self):
         """插件卸载/重载时调用"""
