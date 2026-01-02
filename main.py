@@ -128,23 +128,19 @@ class Main(Star):
         msg = message.message_str.replace("gpt5", "").strip()
         
         if not msg:
-            return CommandResult().error("正确指令：gpt5 《问题》 记忆 《记忆密钥6位数》\n\n示例：gpt5 1+1 记忆 123456")
+            return CommandResult().error("正确指令：gpt5 <记忆数> <提问内容>\n\n示例：gpt5 123456 你好")
         
-        # 解析用户输入，检查是否包含"记忆"关键字
-        if "记忆" not in msg:
-            return CommandResult().error("你没有填写记忆哦，这样是大众池哦，你的记忆会被篡改，你需要填写记忆\n\n正确格式：gpt5 《问题》 记忆 《记忆密钥6位数》\n\n示例：gpt5 1+1 记忆 123456")
-        
-        # 分割输入，提取问题和uid
-        parts = msg.split("记忆")
+        # 分割输入，提取记忆数和问题
+        parts = msg.split(" ", 1)
         if len(parts) != 2:
-            return CommandResult().error("正确格式：gpt5 《问题》 记忆 《记忆密钥6位数》\n\n示例：gpt5 1+1 记忆 123456")
+            return CommandResult().error("正确格式：gpt5 <记忆数> <提问内容>\n\n示例：gpt5 123456 你好")
         
-        question = parts[0].strip()
-        uid = parts[1].strip()
+        uid = parts[0].strip()
+        question = parts[1].strip()
         
-        # 验证uid是否为6位数字
+        # 验证记忆数是否为6位数字
         if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆密钥必须是6位数字\n\n正确格式：gpt5 《问题》 记忆 《记忆密钥6位数》\n\n示例：gpt5 1+1 记忆 123456")
+            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：gpt5 <记忆数> <提问内容>\n\n示例：gpt5 123456 你好")
         
         api_url = "https://api.jkyai.top/API/gpt5-nano/index.php"
         params = {
@@ -179,23 +175,19 @@ class Main(Star):
         msg = message.message_str.replace("克劳德", "").strip()
         
         if not msg:
-            return CommandResult().error("正确指令：克劳德 《问题》 记忆 《记忆密钥6位数》\n\n示例：克劳德 1+1 记忆 123456")
+            return CommandResult().error("正确指令：克劳德 <记忆数> <提问内容>\n\n示例：克劳德 123456 你好")
         
-        # 解析用户输入，检查是否包含"记忆"关键字
-        if "记忆" not in msg:
-            return CommandResult().error("你没有填写记忆哦，这样是大众池哦，你的记忆会被篡改，你需要填写记忆\n\n正确格式：克劳德 《问题》 记忆 《记忆密钥6位数》\n\n示例：克劳德 1+1 记忆 123456")
-        
-        # 分割输入，提取问题和uid
-        parts = msg.split("记忆")
+        # 分割输入，提取记忆数和问题
+        parts = msg.split(" ", 1)
         if len(parts) != 2:
-            return CommandResult().error("正确格式：克劳德 《问题》 记忆 《记忆密钥6位数》\n\n示例：克劳德 1+1 记忆 123456")
+            return CommandResult().error("正确格式：克劳德 <记忆数> <提问内容>\n\n示例：克劳德 123456 你好")
         
-        question = parts[0].strip()
-        uid = parts[1].strip()
+        uid = parts[0].strip()
+        question = parts[1].strip()
         
-        # 验证uid是否为6位数字
+        # 验证记忆数是否为6位数字
         if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆密钥必须是6位数字\n\n正确格式：克劳德 《问题》 记忆 《记忆密钥6位数》\n\n示例：克劳德 1+1 记忆 123456")
+            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：克劳德 <记忆数> <提问内容>\n\n示例：克劳德 123456 你好")
         
         api_url = "https://api.jkyai.top/API/hiku-4.5/index.php"
         params = {
@@ -230,23 +222,19 @@ class Main(Star):
         msg = message.message_str.replace("通义千问", "").strip()
         
         if not msg:
-            return CommandResult().error("正确指令：通义千问 《问题》 记忆 《记忆密钥6位数》\n\n示例：通义千问 1+1 记忆 111111")
+            return CommandResult().error("正确指令：通义千问 <记忆数> <提问内容>\n\n示例：通义千问 123456 你好")
         
-        # 解析用户输入，检查是否包含"记忆"关键字
-        if "记忆" not in msg:
-            return CommandResult().error("你没有填写记忆哦，这样是大众池哦，你的记忆会被篡改，你需要填写记忆\n\n正确格式：通义千问 《问题》 记忆 《记忆密钥6位数》\n\n示例：通义千问 1+1 记忆 111111")
-        
-        # 分割输入，提取问题和uid
-        parts = msg.split("记忆")
+        # 分割输入，提取记忆数和问题
+        parts = msg.split(" ", 1)
         if len(parts) != 2:
-            return CommandResult().error("正确格式：通义千问 《问题》 记忆 《记忆密钥6位数》\n\n示例：通义千问 1+1 记忆 111111")
+            return CommandResult().error("正确格式：通义千问 <记忆数> <提问内容>\n\n示例：通义千问 123456 你好")
         
-        question = parts[0].strip()
-        uid = parts[1].strip()
+        uid = parts[0].strip()
+        question = parts[1].strip()
         
-        # 验证uid是否为6位数字
+        # 验证记忆数是否为6位数字
         if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆密钥必须是6位数字\n\n正确格式：通义千问 《问题》 记忆 《记忆密钥6位数》\n\n示例：通义千问 1+1 记忆 111111")
+            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：通义千问 <记忆数> <提问内容>\n\n示例：通义千问 123456 你好")
         
         api_url = "https://api.jkyai.top/API/qwen3-coder/index.php"
         params = {
@@ -462,23 +450,19 @@ class Main(Star):
         msg = message.message_str.replace("gpt", "").strip()
         
         if not msg:
-            return CommandResult().error("正确指令：gpt 《问题》 记忆 《记忆密钥6位数》\n\n示例：gpt 1+1 记忆 123456")
+            return CommandResult().error("正确指令：gpt <记忆数> <提问内容>\n\n示例：gpt 123456 你好")
         
-        # 解析用户输入，检查是否包含"记忆"关键字
-        if "记忆" not in msg:
-            return CommandResult().error("你没有填写记忆哦，这样是大众池哦，你的记忆会被篡改，你需要填写记忆\n\n正确格式：gpt 《问题》 记忆 《记忆密钥6位数》\n\n示例：gpt 1+1 记忆 123456")
-        
-        # 分割输入，提取问题和uid
-        parts = msg.split("记忆")
+        # 分割输入，提取记忆数和问题
+        parts = msg.split(" ", 1)
         if len(parts) != 2:
-            return CommandResult().error("正确格式：gpt 《问题》 记忆 《记忆密钥6位数》\n\n示例：gpt 1+1 记忆 123456")
+            return CommandResult().error("正确格式：gpt <记忆数> <提问内容>\n\n示例：gpt 123456 你好")
         
-        question = parts[0].strip()
-        uid = parts[1].strip()
+        uid = parts[0].strip()
+        question = parts[1].strip()
         
-        # 验证uid是否为6位数字
+        # 验证记忆数是否为6位数字
         if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆密钥必须是6位数字\n\n正确格式：gpt 《问题》 记忆 《记忆密钥6位数》\n\n示例：gpt 1+1 记忆 123456")
+            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：gpt <记忆数> <提问内容>\n\n示例：gpt 123456 你好")
         
         api_url = "https://api.jkyai.top/API/chatgpt-oss/index.php"
         params = {
@@ -513,23 +497,19 @@ class Main(Star):
         msg = message.message_str.replace("谷歌", "").strip()
         
         if not msg:
-            return CommandResult().error("正确指令：谷歌 《问题》 记忆 《记忆密钥6位数》\n\n示例：谷歌 1+1 记忆 123456")
+            return CommandResult().error("正确指令：谷歌 <记忆数> <提问内容>\n\n示例：谷歌 123456 你好")
         
-        # 解析用户输入，检查是否包含"记忆"关键字
-        if "记忆" not in msg:
-            return CommandResult().error("你没有填写记忆哦，这样是大众池哦，你的记忆会被篡改，你需要填写记忆\n\n正确格式：谷歌 《问题》 记忆 《记忆密钥6位数》\n\n示例：谷歌 1+1 记忆 123456")
-        
-        # 分割输入，提取问题和uid
-        parts = msg.split("记忆")
+        # 分割输入，提取记忆数和问题
+        parts = msg.split(" ", 1)
         if len(parts) != 2:
-            return CommandResult().error("正确格式：谷歌 《问题》 记忆 《记忆密钥6位数》\n\n示例：谷歌 1+1 记忆 123456")
+            return CommandResult().error("正确格式：谷歌 <记忆数> <提问内容>\n\n示例：谷歌 123456 你好")
         
-        question = parts[0].strip()
-        uid = parts[1].strip()
+        uid = parts[0].strip()
+        question = parts[1].strip()
         
-        # 验证uid是否为6位数字
+        # 验证记忆数是否为6位数字
         if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆密钥必须是6位数字\n\n正确格式：谷歌 《问题》 记忆 《记忆密钥6位数》\n\n示例：谷歌 1+1 记忆 123456")
+            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：谷歌 <记忆数> <提问内容>\n\n示例：谷歌 123456 你好")
         
         api_url = "https://api.jkyai.top/API/gemini2.5/index.php"
         params = {
@@ -630,6 +610,53 @@ class Main(Star):
         except Exception as e:
             logger.error(f"请求讯飞AI助手时发生错误：{e}")
             return CommandResult().error(f"请求讯飞AI助手时发生错误：{str(e)}")
+    
+    @filter.command("小米")
+    async def xiaomi_mimo(self, message: AstrMessageEvent):
+        """小米MiMo-V2助手，支持记忆功能"""
+        msg = message.message_str.replace("小米", "").strip()
+        
+        if not msg:
+            return CommandResult().error("正确指令：小米 <记忆数> <提问内容>\n\n示例：小米 123456 你好")
+        
+        # 分割输入，提取记忆数和问题
+        parts = msg.split(" ", 1)
+        if len(parts) != 2:
+            return CommandResult().error("正确格式：小米 <记忆数> <提问内容>\n\n示例：小米 123456 你好")
+        
+        uid = parts[0].strip()
+        question = parts[1].strip()
+        
+        # 验证记忆数是否为6位数字
+        if not uid.isdigit() or len(uid) != 6:
+            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：小米 <记忆数> <提问内容>\n\n示例：小米 123456 你好")
+        
+        api_url = "https://api.jkyai.top/API/xiaomi/index.php"
+        params = {
+            "question": question,
+            "uid": uid
+        }
+        
+        try:
+            timeout = aiohttp.ClientTimeout(total=60)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(api_url, params=params) as resp:
+                    if resp.status != 200:
+                        return CommandResult().error(f"请求小米MiMo-V2助手失败，服务器返回错误状态码：{resp.status}")
+                    
+                    result = await resp.text()
+                    
+                    return CommandResult().message(result)
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            return CommandResult().error("无法连接到小米MiMo-V2助手服务器，请稍后重试或检查网络连接")
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            return CommandResult().error("请求超时，请稍后重试")
+        except Exception as e:
+            logger.error(f"请求小米MiMo-V2助手时发生错误：{e}")
+            return CommandResult().error(f"请求小米MiMo-V2助手时发生错误：{str(e)}")
 
     async def terminate(self):
         """插件卸载/重载时调用"""
