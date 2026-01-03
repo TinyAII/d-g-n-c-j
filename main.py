@@ -737,7 +737,8 @@ class Main(Star):
         msg = message.message_str.replace("解题助手", "").strip()
         
         if not msg:
-            return CommandResult().error("正确指令：解题助手 <题目内容>\n\n示例：解题助手 1+1")
+            yield CommandResult().error("正确指令：解题助手 <题目内容>\n\n示例：解题助手 1+1")
+            return
         
         question = msg.strip()
         
@@ -753,7 +754,8 @@ class Main(Star):
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(api_url, params=params) as resp:
                     if resp.status != 200:
-                        return CommandResult().error(f"解题助手请求失败，服务器返回错误状态码：{resp.status}")
+                        yield CommandResult().error(f"解题助手请求失败，服务器返回错误状态码：{resp.status}")
+                        return
                     
                     result = await resp.json()
                     
@@ -761,7 +763,8 @@ class Main(Star):
                     status = result.get("status", "")
                     if status != "success":
                         error_msg = result.get("answer", "解题助手请求失败")
-                        return CommandResult().error(f"解题助手请求失败：{error_msg}")
+                        yield CommandResult().error(f"解题助手请求失败：{error_msg}")
+                        return
                     
                     # 获取data字段
                     data = result.get("data", {})
@@ -795,18 +798,18 @@ class Main(Star):
                     # 5. 生成图片
                     try:
                         image_url = await self.text_to_image(formatted_content)
-                        return CommandResult().image(image_url)
+                        yield message.image_result(image_url)
                     except Exception as img_error:
                         logger.error(f"生成图片失败：{img_error}")
                         # 如果生成图片失败，返回文本格式
-                        return CommandResult().error(f"生成图片失败，请稍后重试\n\n{formatted_content}")
+                        yield CommandResult().error(f"生成图片失败，请稍后重试\n\n{formatted_content}")
                         
         except aiohttp.ClientError as e:
             logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到解题助手服务器，请稍后重试")
+            yield CommandResult().error("无法连接到解题助手服务器，请稍后重试")
         except asyncio.TimeoutError:
             logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
+            yield CommandResult().error("请求超时，请稍后重试")
         except Exception as e:
             logger.error(f"解题助手请求时发生错误：{e}")
-            return CommandResult().error(f"请求时发生错误：{str(e)}")
+            yield CommandResult().error(f"请求时发生错误：{str(e)}")
