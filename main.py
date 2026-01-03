@@ -811,14 +811,33 @@ class Main(Star):
                 "file": image_url
             }
             
+            logger.debug(f"OCR识别请求：图片URL = {image_url}")
+            logger.debug(f"OCR API URL = {ocr_url}")
+            logger.debug(f"请求参数 = {payload}")
+            
             timeout = aiohttp.ClientTimeout(total=60)
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(ocr_url, json=payload) as resp:
-                    if resp.status != 200:
-                        raise Exception(f"OCR API请求失败，状态码：{resp.status}")
+                    logger.debug(f"OCR API响应状态码：{resp.status}")
+                    logger.debug(f"响应头：{resp.headers}")
                     
-                    result = await resp.json()
+                    if resp.status != 200:
+                        resp_text = await resp.text()
+                        logger.error(f"OCR API请求失败，状态码：{resp.status}，响应内容：{resp_text}")
+                        raise Exception(f"OCR API请求失败，状态码：{resp.status}，响应：{resp_text[:100]}...")
+                    
+                    # 先读取响应文本，记录日志
+                    resp_text = await resp.text()
+                    logger.debug(f"OCR API响应内容：{resp_text}")
+                    
+                    try:
+                        result = json.loads(resp_text)
+                    except json.JSONDecodeError as json_error:
+                        logger.error(f"OCR API返回JSON格式错误：{str(json_error)}，响应内容：{resp_text}")
+                        raise Exception(f"OCR API返回JSON格式错误：{str(json_error)}")
+                    
                     if result.get("code") != 200:
+                        logger.error(f"OCR识别失败：{result.get('msg', '未知错误')}")
                         raise Exception(f"OCR识别失败：{result.get('msg', '未知错误')}")
                     
                     # 获取识别结果
@@ -828,9 +847,11 @@ class Main(Star):
                         text_lines = result.get("data", {}).get("TextLine", [])
                         parsed_text = "\n".join(text_lines)
                     
+                    logger.debug(f"OCR识别成功，识别结果：{parsed_text[:100]}...")
                     return parsed_text.strip()
         except Exception as e:
             logger.error(f"OCR识别出错: {str(e)}")
+            logger.exception("OCR识别异常详情")
             raise
             
     async def process_image_question_solving(self, event: AstrMessageEvent, image_url: str):
@@ -925,7 +946,9 @@ class Main(Star):
                         
         except Exception as e:
             logger.error(f"图片解题失败：{str(e)}")
-            yield CommandResult().error(f"图片解题失败：{str(e)}")
+            logger.exception("图片解题异常详情")
+            # 增加更友好的错误提示
+            yield CommandResult().error(f"图片解题失败：{str(e)}\n\n可能的原因：\n1. 图片链接不可访问\n2. 图片中没有可识别的文字\n3. 网络连接问题\n4. 服务器暂时不可用\n\n请检查图片是否清晰可辨，或稍后重试")
     
     @filter.command("解题助手")
     async def jie_ti_zhu_shou(self, message: AstrMessageEvent):
