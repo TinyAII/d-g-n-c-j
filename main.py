@@ -862,6 +862,116 @@ class Main(Star):
             logger.exception("OCR识别异常详情")
             raise
             
+    # 自定义HTML模板，用于生成解题结果图片
+    SOLUTION_TMPL = '''
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>解题结果</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: 'Microsoft YaHei', Arial, sans-serif;
+                background-color: #f5f5f5;
+                color: #333;
+                line-height: 1.6;
+                padding: 20px;
+            }
+            
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                background-color: #fff;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            
+            h1, h2 {
+                color: #2c3e50;
+                margin-bottom: 15px;
+                font-weight: bold;
+            }
+            
+            h1 {
+                font-size: 28px;
+                text-align: center;
+                margin-bottom: 25px;
+                padding-bottom: 15px;
+                border-bottom: 2px solid #3498db;
+            }
+            
+            h2 {
+                font-size: 22px;
+                margin-top: 25px;
+                margin-bottom: 15px;
+                color: #3498db;
+            }
+            
+            .content {
+                font-size: 18px;
+                white-space: pre-wrap;
+                word-break: break-word;
+                background-color: #fafafa;
+                padding: 20px;
+                border-radius: 8px;
+                border-left: 4px solid #3498db;
+            }
+            
+            .question {
+                background-color: #e8f4f8;
+            }
+            
+            .thinking {
+                background-color: #f4f8e8;
+                border-left-color: #8bc34a;
+            }
+            
+            .answer {
+                background-color: #fff3e0;
+                border-left-color: #ff9800;
+                font-weight: bold;
+            }
+            
+            .time {
+                margin-top: 25px;
+                text-align: right;
+                font-size: 14px;
+                color: #7f8c8d;
+                font-style: italic;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>解题结果</h1>
+            
+            <h2>题目</h2>
+            <div class="content question">{{ question }}</div>
+            
+            {% if thinking %}
+            <h2>思考过程</h2>
+            <div class="content thinking">{{ thinking }}</div>
+            {% endif %}
+            
+            <h2>答案</h2>
+            <div class="content answer">{{ answer }}</div>
+            
+            {% if time %}
+            <div class="time">生成时间：{{ time }}</div>
+            {% endif %}
+        </div>
+    </body>
+    </html>
+    '''
+    
     async def process_image_question_solving(self, event: AstrMessageEvent, image_url: str):
         """处理图片解题的完整流程"""
         try:
@@ -943,29 +1053,49 @@ class Main(Star):
                             thinking = ""  # 没有思考过程
                             answer_content = answer.strip()
                         
-                        # 5. 格式化内容
-                        formatted_content = f"题目：\n{question_text}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
-                        
-                        # 6. 生成图片
+                        # 5. 生成图片 - 使用自定义HTML模板
                         try:
                             # 返回处理中的提示
                             yield CommandResult().message("正在生成图片，请稍候...")
                             
-                            image_url = await self.text_to_image(formatted_content)
+                            # 使用自定义HTML模板生成图片
+                            template_data = {
+                                "question": question_text,
+                                "thinking": thinking,
+                                "answer": answer_content,
+                                "time": created_at
+                            }
+                            
+                            # 渲染选项
+                            options = {
+                                "full_page": True,
+                                "type": "png",
+                                "quality": 95
+                            }
+                            
+                            # 使用html_render方法生成图片
+                            image_url = await self.html_render(self.SOLUTION_TMPL, template_data, options=options)
                             yield event.image_result(image_url)
                         except Exception as img_error:
                             logger.error(f"生成图片失败：{img_error}")
                             # 详细记录错误信息
                             logger.exception("生成图片时发生异常")
-                            # 如果生成图片失败，直接返回文本格式
-                            yield CommandResult().message(f"图片生成失败，以下是文本答案：\n\n{formatted_content}")
+                            # 回退到基本的text_to_image方法
+                            try:
+                                logger.info("尝试使用基本text_to_image方法生成图片")
+                                formatted_content = f"题目：\n{question_text}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
+                                image_url = await self.text_to_image(formatted_content)
+                                yield event.image_result(image_url)
+                            except Exception as basic_img_error:
+                                logger.error(f"基本text_to_image方法也失败：{basic_img_error}")
+                                # 如果生成图片失败，直接返回文本格式
+                                yield CommandResult().message(f"图片生成失败，以下是文本答案：\n\n题目：\n{question_text}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}")
                 except asyncio.TimeoutError:
                     yield CommandResult().error("解题助手请求超时，服务器响应过慢\n\n建议：\n1. 检查网络连接\n2. 稍后重试")
                     return
                 except aiohttp.ClientError as client_error:
                     yield CommandResult().error(f"解题助手网络请求失败：{str(client_error)}\n\n建议：\n1. 检查网络连接\n2. 稍后重试")
                     return
-                        
         except Exception as e:
             logger.error(f"图片解题失败：{str(e)}")
             logger.exception("图片解题异常详情")
@@ -1045,22 +1175,43 @@ class Main(Star):
                         thinking = ""  # 没有思考过程
                         answer_content = answer.strip()
                     
-                    # 4. 格式化内容
-                    formatted_content = f"题目：\n{question}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
-                    
-                    # 5. 生成图片
+                    # 4. 生成图片 - 使用自定义HTML模板
                     try:
                         # 先返回一个处理中的提示
                         yield CommandResult().message("正在生成图片，请稍候...")
                         
-                        image_url = await self.text_to_image(formatted_content)
+                        # 使用自定义HTML模板生成图片
+                        template_data = {
+                            "question": question,
+                            "thinking": thinking,
+                            "answer": answer_content,
+                            "time": created_at
+                        }
+                        
+                        # 渲染选项
+                        options = {
+                            "full_page": True,
+                            "type": "png",
+                            "quality": 95
+                        }
+                        
+                        # 使用html_render方法生成图片
+                        image_url = await self.html_render(self.SOLUTION_TMPL, template_data, options=options)
                         yield message.image_result(image_url)
                     except Exception as img_error:
                         logger.error(f"生成图片失败：{img_error}")
                         # 详细记录错误信息
                         logger.exception("生成图片时发生异常")
-                        # 如果生成图片失败，直接返回文本格式
-                        yield CommandResult().message(f"图片生成失败，以下是文本答案：\n\n{formatted_content}")
+                        # 回退到基本的text_to_image方法
+                        try:
+                            logger.info("尝试使用基本text_to_image方法生成图片")
+                            formatted_content = f"题目：\n{question}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
+                            image_url = await self.text_to_image(formatted_content)
+                            yield message.image_result(image_url)
+                        except Exception as basic_img_error:
+                            logger.error(f"基本text_to_image方法也失败：{basic_img_error}")
+                            # 如果生成图片失败，直接返回文本格式
+                            yield CommandResult().message(f"图片生成失败，以下是文本答案：\n\n题目：\n{question}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}")
                         
         except aiohttp.ClientError as e:
             logger.error(f"网络连接错误：{e}")
