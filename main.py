@@ -730,3 +730,83 @@ class Main(Star):
     async def terminate(self):
         """插件卸载/重载时调用"""
         pass
+    
+    @filter.command("解题助手")
+    async def jie_ti_zhu_shou(self, message: AstrMessageEvent):
+        """解题助手，支持数学和物理方面的题目，返回图片格式的解题结果"""
+        msg = message.message_str.replace("解题助手", "").strip()
+        
+        if not msg:
+            return CommandResult().error("正确指令：解题助手 <题目内容>\n\n示例：解题助手 1+1")
+        
+        question = msg.strip()
+        
+        try:
+            # 1. 调用万能解题助手API
+            api_url = "https://api.jkyai.top/API/wnjtzs.php"
+            params = {
+                "question": question,
+                "type": "json"  # 返回json格式，便于解析
+            }
+            
+            timeout = aiohttp.ClientTimeout(total=60)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(api_url, params=params) as resp:
+                    if resp.status != 200:
+                        return CommandResult().error(f"解题助手请求失败，服务器返回错误状态码：{resp.status}")
+                    
+                    result = await resp.json()
+                    
+                    # 2. 解析API返回结果
+                    status = result.get("status", "")
+                    if status != "success":
+                        error_msg = result.get("answer", "解题助手请求失败")
+                        return CommandResult().error(f"解题助手请求失败：{error_msg}")
+                    
+                    # 获取data字段
+                    data = result.get("data", {})
+                    answer = data.get("answer", "")
+                    
+                    # 获取created_at
+                    metadata = data.get("metadata", {})
+                    created_at = metadata.get("created_at", "")
+                    
+                    # 3. 提取思考过程和答案
+                    # 从answer中提取思考过程和答案
+                    # answer格式：<Think>思考内容</Think>【解题答案：答案内容】
+                    think_start = answer.find("<Think>")
+                    think_end = answer.find("</Think>")
+                    if think_start != -1 and think_end != -1:
+                        thinking = answer[think_start+6:think_end].strip()
+                        answer_content = answer[think_end+8:].strip()
+                        # 移除可能的【解题答案：】前缀
+                        if answer_content.startswith("【解题答案："):
+                            answer_content = answer_content[7:].strip()
+                            if answer_content.endswith("】"):
+                                answer_content = answer_content[:-1].strip()
+                    else:
+                        # 如果没有<Think>标签，直接使用answer作为答案
+                        thinking = ""  # 没有思考过程
+                        answer_content = answer.strip()
+                    
+                    # 4. 格式化内容
+                    formatted_content = f"题目：\n{question}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
+                    
+                    # 5. 生成图片
+                    try:
+                        image_url = await self.text_to_image(formatted_content)
+                        return CommandResult().image(image_url)
+                    except Exception as img_error:
+                        logger.error(f"生成图片失败：{img_error}")
+                        # 如果生成图片失败，返回文本格式
+                        return CommandResult().error(f"生成图片失败，请稍后重试\n\n{formatted_content}")
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            return CommandResult().error("无法连接到解题助手服务器，请稍后重试")
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            return CommandResult().error("请求超时，请稍后重试")
+        except Exception as e:
+            logger.error(f"解题助手请求时发生错误：{e}")
+            return CommandResult().error(f"请求时发生错误：{str(e)}")
