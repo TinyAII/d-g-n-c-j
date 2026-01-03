@@ -2,6 +2,7 @@ import asyncio
 import logging
 import aiohttp
 import urllib.parse
+import json
 from astrbot.api.all import AstrMessageEvent, CommandResult, Context, Plain
 import astrbot.api.event.filter as filter
 from astrbot.api.star import register, Star
@@ -750,14 +751,26 @@ class Main(Star):
                 "type": "json"  # 返回json格式，便于解析
             }
             
-            timeout = aiohttp.ClientTimeout(total=60)
+            timeout = aiohttp.ClientTimeout(total=120)  # 延长超时时间到120秒
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(api_url, params=params) as resp:
                     if resp.status != 200:
                         yield CommandResult().error(f"解题助手请求失败，服务器返回错误状态码：{resp.status}")
                         return
                     
-                    result = await resp.json()
+                    # 检查响应头的Content-Type
+                    content_type = resp.headers.get('Content-Type', '')
+                    if 'application/json' not in content_type:
+                        # 如果不是json，先尝试读取文本内容
+                        text_content = await resp.text()
+                        yield CommandResult().error(f"解题助手返回格式错误，预期JSON但得到：{text_content[:100]}...")
+                        return
+                    
+                    try:
+                        result = await resp.json()
+                    except json.JSONDecodeError as e:
+                        yield CommandResult().error(f"解题助手返回JSON格式错误：{str(e)}")
+                        return
                     
                     # 2. 解析API返回结果
                     status = result.get("status", "")
@@ -797,12 +810,17 @@ class Main(Star):
                     
                     # 5. 生成图片
                     try:
+                        # 先返回一个处理中的提示
+                        yield CommandResult().message("正在生成图片，请稍候...")
+                        
                         image_url = await self.text_to_image(formatted_content)
                         yield message.image_result(image_url)
                     except Exception as img_error:
                         logger.error(f"生成图片失败：{img_error}")
-                        # 如果生成图片失败，返回文本格式
-                        yield CommandResult().error(f"生成图片失败，请稍后重试\n\n{formatted_content}")
+                        # 详细记录错误信息
+                        logger.exception("生成图片时发生异常")
+                        # 如果生成图片失败，直接返回文本格式
+                        yield CommandResult().message(f"图片生成失败，以下是文本答案：\n\n{formatted_content}")
                         
         except aiohttp.ClientError as e:
             logger.error(f"网络连接错误：{e}")
