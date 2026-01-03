@@ -826,7 +826,7 @@ class Main(Star):
                         if resp.status != 200:
                             resp_text = await resp.text()
                             logger.error(f"OCR API请求失败，状态码：{resp.status}，响应内容：{resp_text}")
-                            raise Exception(f"OCR API请求失败，状态码：{resp.status}，响应：{resp_text[:100]}...")
+                            raise Exception(f"OCR API请求失败，状态码：{resp.status}，请稍后重试")
                         
                         # 先读取响应文本，记录日志
                         resp_text = await resp.text()
@@ -836,11 +836,16 @@ class Main(Star):
                             result = json.loads(resp_text)
                         except json.JSONDecodeError as json_error:
                             logger.error(f"OCR API返回JSON格式错误：{str(json_error)}，响应内容：{resp_text}")
-                            raise Exception(f"OCR API返回JSON格式错误：{str(json_error)}")
+                            raise Exception(f"OCR API返回格式错误，请稍后重试")
                         
                         if result.get("code") != 200:
-                            logger.error(f"OCR识别失败：{result.get('msg', '未知错误')}")
-                            raise Exception(f"OCR识别失败：{result.get('msg', '未知错误')}")
+                            msg = result.get('msg', '未知错误')
+                            logger.error(f"OCR识别失败：{msg}")
+                            # 更友好的错误提示
+                            user_msg = "OCR识别失败，请检查图片清晰度或稍后重试"
+                            if "联系站长" in msg:
+                                user_msg = "OCR服务暂时不可用，请稍后重试"
+                            raise Exception(user_msg)
                         
                         # 获取识别结果
                         parsed_text = result.get("data", {}).get("ParsedText", "")
@@ -849,6 +854,9 @@ class Main(Star):
                             text_lines = result.get("data", {}).get("TextLine", [])
                             parsed_text = "\n".join(text_lines)
                         
+                        if not parsed_text.strip():
+                            raise Exception("OCR识别失败，未能从图片中提取到文字内容")
+                        
                         logger.debug(f"OCR识别成功，识别结果：{parsed_text[:100]}...")
                         return parsed_text.strip()
                 except asyncio.TimeoutError:
@@ -856,7 +864,7 @@ class Main(Star):
                     raise Exception("OCR识别超时，请稍后重试")
                 except aiohttp.ClientError as client_error:
                     logger.error(f"OCR API网络请求错误：{str(client_error)}，图片URL：{image_url}")
-                    raise Exception(f"OCR识别网络错误：{str(client_error)}")
+                    raise Exception(f"网络连接错误，请检查网络或稍后重试")
         except Exception as e:
             logger.error(f"OCR识别出错: {str(e)}")
             logger.exception("OCR识别异常详情")
@@ -865,108 +873,163 @@ class Main(Star):
     # 自定义HTML模板，用于生成解题结果图片
     SOLUTION_TMPL = '''
     <!DOCTYPE html>
-    <html lang="zh-CN">
+    <html>
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>解题结果</title>
         <style>
-            * {
+            body {
                 margin: 0;
-                padding: 0;
-                box-sizing: border-box;
+                padding: 40px;
+                background: #ffffff;
             }
             
-            body {
+            .container {
+                position: relative;
+                width: 100%;
+                height: 100%;
+                min-height: 400px;
+            }
+            
+            .grid {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-image: 
+                    linear-gradient(to right, #e0e0e0 1px, transparent 1px),
+                    linear-gradient(to bottom, #e0e0e0 1px, transparent 1px);
+                background-size: 20px 20px;
+                opacity: 0.3;
+            }
+            
+            .border {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                border: 2px solid #000000;
+            }
+            
+            .corner {
+                position: absolute;
+                width: 20px;
+                height: 20px;
+                border: 2px solid #000000;
+            }
+            
+            .corner-tl {
+                top: -10px;
+                left: -10px;
+                border-right: none;
+                border-bottom: none;
+            }
+            
+            .corner-tr {
+                top: -10px;
+                right: -10px;
+                border-left: none;
+                border-bottom: none;
+            }
+            
+            .corner-bl {
+                bottom: -10px;
+                left: -10px;
+                border-right: none;
+                border-top: none;
+            }
+            
+            .corner-br {
+                bottom: -10px;
+                right: -10px;
+                border-left: none;
+                border-top: none;
+            }
+            
+            /* 解题内容样式 */
+            .solution-content {
+                position: relative;
+                z-index: 10;
                 font-family: 'Microsoft YaHei', Arial, sans-serif;
-                background-color: #f5f5f5;
-                color: #333;
+                color: #000000;
                 line-height: 1.6;
                 padding: 20px;
             }
             
-            .container {
-                max-width: 800px;
-                margin: 0 auto;
-                background-color: #fff;
-                padding: 30px;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            }
-            
-            h1, h2 {
-                color: #2c3e50;
-                margin-bottom: 15px;
-                font-weight: bold;
-            }
-            
             h1 {
-                font-size: 28px;
+                font-size: 24px;
+                font-weight: bold;
+                margin-bottom: 20px;
+                color: #000000;
                 text-align: center;
+            }
+            
+            .section {
                 margin-bottom: 25px;
-                padding-bottom: 15px;
-                border-bottom: 2px solid #3498db;
             }
             
             h2 {
-                font-size: 22px;
-                margin-top: 25px;
-                margin-bottom: 15px;
-                color: #3498db;
+                font-size: 20px;
+                font-weight: bold;
+                margin-bottom: 10px;
+                color: #000000;
+                border-bottom: 1px solid #000000;
+                padding-bottom: 5px;
             }
             
-            .content {
-                font-size: 18px;
+            .text-content {
+                font-size: 16px;
                 white-space: pre-wrap;
                 word-break: break-word;
-                background-color: #fafafa;
-                padding: 20px;
-                border-radius: 8px;
-                border-left: 4px solid #3498db;
-            }
-            
-            .question {
-                background-color: #e8f4f8;
-            }
-            
-            .thinking {
-                background-color: #f4f8e8;
-                border-left-color: #8bc34a;
-            }
-            
-            .answer {
-                background-color: #fff3e0;
-                border-left-color: #ff9800;
-                font-weight: bold;
+                background-color: rgba(255, 255, 255, 0.9);
+                padding: 15px;
+                border-radius: 5px;
             }
             
             .time {
-                margin-top: 25px;
                 text-align: right;
                 font-size: 14px;
-                color: #7f8c8d;
+                color: #666666;
                 font-style: italic;
+                margin-top: 30px;
             }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>解题结果</h1>
+            <div class="grid"></div>
+            <div class="border"></div>
+            <div class="corner corner-tl"></div>
+            <div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div>
+            <div class="corner corner-br"></div>
             
-            <h2>题目</h2>
-            <div class="content question">{{ question }}</div>
-            
-            {% if thinking %}
-            <h2>思考过程</h2>
-            <div class="content thinking">{{ thinking }}</div>
-            {% endif %}
-            
-            <h2>答案</h2>
-            <div class="content answer">{{ answer }}</div>
-            
-            {% if time %}
-            <div class="time">生成时间：{{ time }}</div>
-            {% endif %}
+            <!-- 解题内容 -->
+            <div class="solution-content">
+                <h1>解题结果</h1>
+                
+                <div class="section">
+                    <h2>题目</h2>
+                    <div class="text-content">{{ question }}</div>
+                </div>
+                
+                {% if thinking %}
+                <div class="section">
+                    <h2>思考过程</h2>
+                    <div class="text-content">{{ thinking }}</div>
+                </div>
+                {% endif %}
+                
+                <div class="section">
+                    <h2>答案</h2>
+                    <div class="text-content">{{ answer }}</div>
+                </div>
+                
+                {% if time %}
+                <div class="time">生成时间：{{ time }}</div>
+                {% endif %}
+            </div>
         </div>
     </body>
     </html>
