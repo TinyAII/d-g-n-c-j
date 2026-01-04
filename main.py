@@ -1,1026 +1,64 @@
 import asyncio
+import os
+import json
+import datetime
 import logging
 import aiohttp
 import urllib.parse
-import json
-import re
 from astrbot.api.all import AstrMessageEvent, CommandResult, Context, Plain
 import astrbot.api.event.filter as filter
 from astrbot.api.star import register, Star
-from astrbot.api.message_components import Image as MsgImage, Reply
 
 logger = logging.getLogger("astrbot")
 
 
-@register("D-G-N-C-J", "Tinyxi", "腾讯元宝+DeepSeek-3.2+DeepSeek-3.1+GPT5-nano+Claude4.5-hiku+Qwen3-coder+DeepSeek-R1+智谱GLM4.6+夸克AI+蚂蚁AI+豆包AI+ChatGPT-oss+谷歌Gemini-2.5+阿里AI+讯飞AI", "1.0.0", "")
+@register("D-G-N-C-J", "Tinyxi", "早晚安记录+王者战力查询+城际路线查询+AI绘画", "1.0.0", "")
 class Main(Star):
     def __init__(self, context: Context) -> None:
         super().__init__(context)
-        self.waiting_sessions = {}  # 存储等待图片的会话
-        self.timeout_tasks = {}  # 存储超时任务
+        self.PLUGIN_NAME = "astrbot_plugin_essential"
+        PLUGIN_NAME = self.PLUGIN_NAME
 
-    @filter.command("腾讯元宝")
-    async def tencent_yuanbao(self, message: AstrMessageEvent):
-        """腾讯元宝助手，支持异步请求"""
-        msg = message.message_str.replace("腾讯元宝", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：腾讯元宝 <提问内容>\n\n示例：腾讯元宝 1+1")
-        
-        question = msg.strip()
-        
-        # 添加提示词
-        prompt = f"{question}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/yuanbao.php"
-        params = {
-            "question": prompt
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=30)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error("请求腾讯元宝助手失败，服务器返回错误状态码")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到腾讯元宝助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求腾讯元宝助手时发生错误：{e}")
-            return CommandResult().error(f"请求腾讯元宝助手时发生错误：{str(e)}")
+        if not os.path.exists(f"data/{PLUGIN_NAME}_data.json"):
+            with open(f"data/{PLUGIN_NAME}_data.json", "w", encoding="utf-8") as f:
+                f.write(json.dumps({}, ensure_ascii=False, indent=2))
+        with open(f"data/{PLUGIN_NAME}_data.json", "r", encoding="utf-8") as f:
+            self.data = json.loads(f.read())
+        self.good_morning_data = self.data.get("good_morning", {})
 
-    @filter.command("deep3.2")
-    async def deepseek_32(self, message: AstrMessageEvent):
-        """DeepSeek-3.2助手，支持异步请求"""
-        msg = message.message_str.replace("deep3.2", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：deep3.2 <提问内容>\n\n示例：deep3.2 1+1")
-        
-        question = msg.strip()
-        
-        # 添加提示词
-        prompt = f"{question}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/depsek3.2.php"
-        params = {
-            "question": prompt
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error("请求DeepSeek-3.2助手失败，服务器返回错误状态码")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到DeepSeek-3.2助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求DeepSeek-3.2助手时发生错误：{e}")
-            return CommandResult().error(f"请求DeepSeek-3.2助手时发生错误：{str(e)}")
+        self.daily_sleep_cache = {}
+        self.good_morning_cd = {} 
 
-    @filter.command("deep3.1")
-    async def deepseek_31(self, message: AstrMessageEvent):
-        """DeepSeek-3.1助手，支持异步请求"""
-        msg = message.message_str.replace("deep3.1", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：deep3.1 <提问内容>\n\n示例：deep3.1 1+1")
-        
-        question = msg.strip()
-        
-        # 添加提示词
-        prompt = f"{question}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/depsek3.1.php"
-        params = {
-            "question": prompt
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error("请求DeepSeek-3.1助手失败，服务器返回错误状态码")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到DeepSeek-3.1助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求DeepSeek-3.1助手时发生错误：{e}")
-            return CommandResult().error(f"请求DeepSeek-3.1助手时发生错误：{str(e)}")
+    def get_cached_sleep_count(self, umo_id: str, date_str: str) -> int:
+        """获取缓存的睡觉人数"""
+        if umo_id not in self.daily_sleep_cache:
+            self.daily_sleep_cache[umo_id] = {}
+        return self.daily_sleep_cache[umo_id].get(date_str, -1)
 
-    @filter.command("gpt5")
-    async def gpt5_nano(self, message: AstrMessageEvent):
-        """GPT5-nano助手，支持记忆功能"""
-        msg = message.message_str.replace("gpt5", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：gpt5 <记忆数> <提问内容>\n\n示例：gpt5 123456 你好")
-        
-        # 分割输入，提取记忆数和问题
-        parts = msg.split(" ", 1)
-        if len(parts) != 2:
-            return CommandResult().error("正确格式：gpt5 <记忆数> <提问内容>\n\n示例：gpt5 123456 你好")
-        
-        uid = parts[0].strip()
-        question = parts[1].strip()
-        
-        # 验证记忆数是否为6位数字
-        if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：gpt5 <记忆数> <提问内容>\n\n示例：gpt5 123456 你好")
-        
-        # 添加提示词
-        prompt = f"{question}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/gpt5-nano/index.php"
-        params = {
-            "question": prompt,
-            "uid": uid
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求GPT5-nano助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到GPT5-nano助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求GPT5-nano助手时发生错误：{e}")
-            return CommandResult().error(f"请求GPT5-nano助手时发生错误：{str(e)}")
+    def update_sleep_cache(self, umo_id: str, date_str: str, count: int):
+        """更新睡觉人数缓存"""
+        if umo_id not in self.daily_sleep_cache:
+            self.daily_sleep_cache[umo_id] = {}
+        self.daily_sleep_cache[umo_id][date_str] = count
 
-    @filter.command("克劳德")
-    async def claude_hiku(self, message: AstrMessageEvent):
-        """Claude4.5-hiku助手，支持记忆功能"""
-        msg = message.message_str.replace("克劳德", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：克劳德 <记忆数> <提问内容>\n\n示例：克劳德 123456 你好")
-        
-        # 分割输入，提取记忆数和问题
-        parts = msg.split(" ", 1)
-        if len(parts) != 2:
-            return CommandResult().error("正确格式：克劳德 <记忆数> <提问内容>\n\n示例：克劳德 123456 你好")
-        
-        uid = parts[0].strip()
-        question = parts[1].strip()
-        
-        # 验证记忆数是否为6位数字
-        if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：克劳德 <记忆数> <提问内容>\n\n示例：克劳德 123456 你好")
-        
-        # 添加提示词
-        prompt = f"{question}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/hiku-4.5/index.php"
-        params = {
-            "question": prompt,
-            "uid": uid
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求Claude4.5-hiku助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到Claude4.5-hiku助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求Claude4.5-hiku助手时发生错误：{e}")
-            return CommandResult().error(f"请求Claude4.5-hiku助手时发生错误：{str(e)}")
+    def invalidate_sleep_cache(self, umo_id: str, date_str: str):
+        """使缓存失效"""
+        if umo_id in self.daily_sleep_cache and date_str in self.daily_sleep_cache[umo_id]:
+            del self.daily_sleep_cache[umo_id][date_str]
 
-    @filter.command("千问")
-    async def qwen3_coder(self, message: AstrMessageEvent):
-        """通义千问助手，支持记忆功能"""
-        msg = message.message_str.replace("千问", "").strip()
+    def check_good_morning_cd(self, user_id: str, current_time: datetime.datetime) -> bool:
+        """检查用户是否在CD中，返回True表示在CD中"""
+        if user_id not in self.good_morning_cd:
+            return False
         
-        if not msg:
-            return CommandResult().error("正确指令：千问 <记忆数> <提问内容>\n\n示例：千问 123456 你好")
-        
-        # 分割输入，提取记忆数和问题
-        parts = msg.split(" ", 1)
-        if len(parts) != 2:
-            return CommandResult().error("正确格式：千问 <记忆数> <提问内容>\n\n示例：千问 123456 你好")
-        
-        uid = parts[0].strip()
-        question = parts[1].strip()
-        
-        # 验证记忆数是否为6位数字
-        if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：千问 <记忆数> <提问内容>\n\n示例：千问 123456 你好")
-        
-        # 添加违禁词提示
-        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/qwen3-coder/index.php"
-        params = {
-            "question": question_with_prompt,
-            "uid": uid
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求通义千问助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到通义千问助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求通义千问助手时发生错误：{e}")
-            return CommandResult().error(f"请求通义千问助手时发生错误：{str(e)}")
+        last_time = self.good_morning_cd[user_id]
+        time_diff = (current_time - last_time).total_seconds()
+        return time_diff < 1800
 
-    @filter.command("deepR1")
-    async def deepseek_r1(self, message: AstrMessageEvent):
-        """DeepSeek-R1助手，支持异步请求"""
-        msg = message.message_str.replace("deepR1", "").strip()
+    def update_good_morning_cd(self, user_id: str, current_time: datetime.datetime):
+        """更新用户的CD时间"""
+        self.good_morning_cd[user_id] = current_time
         
-        if not msg:
-            return CommandResult().error("正确指令：deepR1 <提问内容>\n\n示例：deepR1 1+1")
-        
-        question = msg.strip()
-        
-        # 添加违禁词提示
-        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/deepseek.php"
-        params = {
-            "question": question_with_prompt
-        }
-        
-        try:
-            # 根据文档，该API响应速度较慢，设置较长超时时间
-            timeout = aiohttp.ClientTimeout(total=120)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求DeepSeek-R1助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到DeepSeek-R1助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求DeepSeek-R1助手时发生错误：{e}")
-            return CommandResult().error(f"请求DeepSeek-R1助手时发生错误：{str(e)}")
-
-    @filter.command("智谱")
-    async def glm46(self, message: AstrMessageEvent):
-        """智谱GLM4.6助手，支持异步请求"""
-        msg = message.message_str.replace("智谱", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：智谱 <提问内容>\n\n示例：智谱 1+1")
-        
-        question = msg.strip()
-        
-        # 添加违禁词提示
-        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/glm4.6.php"
-        params = {
-            "question": question_with_prompt
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求智谱GLM4.6助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到智谱GLM4.6助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求智谱GLM4.6助手时发生错误：{e}")
-            return CommandResult().error(f"请求智谱GLM4.6助手时发生错误：{str(e)}")
-    
-    @filter.command("夸克")
-    async def kuaike_ai(self, message: AstrMessageEvent):
-        """夸克AI助手，支持异步请求"""
-        msg = message.message_str.replace("夸克", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：夸克 <提问内容>\n\n示例：夸克 1+1")
-        
-        content = msg.strip()
-        
-        # 添加违禁词提示
-        content_with_prompt = f"{content} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/kkaimx.php"
-        params = {
-            "content": content_with_prompt
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求夸克AI助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到夸克AI助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求夸克AI助手时发生错误：{e}")
-            return CommandResult().error(f"请求夸克AI助手时发生错误：{str(e)}")
-    
-    @filter.command("蚂蚁")
-    async def ant_ling_ai(self, message: AstrMessageEvent):
-        """蚂蚁Ling2.0-1tAI助手，支持异步请求"""
-        msg = message.message_str.replace("蚂蚁", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：蚂蚁 <提问内容>\n\n示例：蚂蚁 1+1")
-        
-        question = msg.strip()
-        
-        # 添加违禁词提示
-        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/ling-1t.php"
-        params = {
-            "question": question_with_prompt
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=120)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求蚂蚁AI助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到蚂蚁AI助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求蚂蚁AI助手时发生错误：{e}")
-            return CommandResult().error(f"请求蚂蚁AI助手时发生错误：{str(e)}")
-    
-    @filter.command("豆包")
-    async def doubao_ai(self, message: AstrMessageEvent):
-        """字节跳动豆包AI助手，支持异步请求"""
-        msg = message.message_str.replace("豆包", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：豆包 <提问内容>\n\n示例：豆包 1+1")
-        
-        question = msg.strip()
-        
-        # 添加违禁词提示
-        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/doubao.php"
-        params = {
-            "question": question_with_prompt
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求豆包AI助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到豆包AI助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求豆包AI助手时发生错误：{e}")
-            return CommandResult().error(f"请求豆包AI助手时发生错误：{str(e)}")
-    
-    @filter.command("gpt")
-    async def chatgpt_oss(self, message: AstrMessageEvent):
-        """ChatGPT-ossAI助手，支持记忆功能"""
-        msg = message.message_str.replace("gpt", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：gpt <记忆数> <提问内容>\n\n示例：gpt 123456 你好")
-        
-        # 分割输入，提取记忆数和问题
-        parts = msg.split(" ", 1)
-        if len(parts) != 2:
-            return CommandResult().error("正确格式：gpt <记忆数> <提问内容>\n\n示例：gpt 123456 你好")
-        
-        uid = parts[0].strip()
-        question = parts[1].strip()
-        
-        # 验证记忆数是否为6位数字
-        if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：gpt <记忆数> <提问内容>\n\n示例：gpt 123456 你好")
-        
-        # 添加违禁词提示
-        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/chatgpt-oss/index.php"
-        params = {
-            "question": question_with_prompt,
-            "uid": uid
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求ChatGPT-ossAI助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到ChatGPT-ossAI助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求ChatGPT-ossAI助手时发生错误：{e}")
-            return CommandResult().error(f"请求ChatGPT-ossAI助手时发生错误：{str(e)}")
-    
-    @filter.command("谷歌")
-    async def gemini_ai(self, message: AstrMessageEvent):
-        """Gemini-2.5AI助手，支持记忆功能"""
-        msg = message.message_str.replace("谷歌", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：谷歌 <记忆数> <提问内容>\n\n示例：谷歌 123456 你好")
-        
-        # 分割输入，提取记忆数和问题
-        parts = msg.split(" ", 1)
-        if len(parts) != 2:
-            return CommandResult().error("正确格式：谷歌 <记忆数> <提问内容>\n\n示例：谷歌 123456 你好")
-        
-        uid = parts[0].strip()
-        question = parts[1].strip()
-        
-        # 验证记忆数是否为6位数字
-        if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：谷歌 <记忆数> <提问内容>\n\n示例：谷歌 123456 你好")
-        
-        # 添加违禁词提示
-        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/gemini2.5/index.php"
-        params = {
-            "question": question_with_prompt,
-            "uid": uid
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求谷歌Gemini-2.5AI助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到谷歌Gemini-2.5AI助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求谷歌Gemini-2.5AI助手时发生错误：{e}")
-            return CommandResult().error(f"请求谷歌Gemini-2.5AI助手时发生错误：{str(e)}")
-    
-    @filter.command("阿里")
-    async def qwen3_ai(self, message: AstrMessageEvent):
-        """阿里云千问Qwen3-235bAI助手，支持异步请求"""
-        msg = message.message_str.replace("阿里", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：阿里 <提问内容>\n\n示例：阿里 1+1")
-        
-        question = msg.strip()
-        
-        # 添加违禁词提示
-        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/qwen3.php"
-        params = {
-            "question": question_with_prompt
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求阿里AI助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到阿里AI助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求阿里AI助手时发生错误：{e}")
-            return CommandResult().error(f"请求阿里AI助手时发生错误：{str(e)}")
-    
-    @filter.command("讯飞")
-    async def xfxhx1_ai(self, message: AstrMessageEvent):
-        """讯飞星火X1AI助手，支持异步请求"""
-        msg = message.message_str.replace("讯飞", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：讯飞 <提问内容>\n\n示例：讯飞 1+1")
-        
-        content = msg.strip()
-        
-        # 添加违禁词提示
-        content_with_prompt = f"{content} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/xfxhx1.php"
-        params = {
-            "content": content_with_prompt
-        }
-        
-        try:
-            # API文档显示响应耗时较长（6.70s），设置较长超时时间
-            timeout = aiohttp.ClientTimeout(total=120)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求讯飞AI助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到讯飞AI助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求讯飞AI助手时发生错误：{e}")
-            return CommandResult().error(f"请求讯飞AI助手时发生错误：{str(e)}")
-    
-    @filter.command("小米")
-    async def xiaomi_mimo(self, message: AstrMessageEvent):
-        """小米MiMo-V2助手，支持记忆功能"""
-        msg = message.message_str.replace("小米", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：小米 <记忆数> <提问内容>\n\n示例：小米 123456 你好")
-        
-        # 分割输入，提取记忆数和问题
-        parts = msg.split(" ", 1)
-        if len(parts) != 2:
-            return CommandResult().error("正确格式：小米 <记忆数> <提问内容>\n\n示例：小米 123456 你好")
-        
-        uid = parts[0].strip()
-        question = parts[1].strip()
-        
-        # 验证记忆数是否为6位数字
-        if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：小米 <记忆数> <提问内容>\n\n示例：小米 123456 你好")
-        
-        # 添加违禁词提示
-        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
-        
-        api_url = "https://api.jkyai.top/API/xiaomi/index.php"
-        params = {
-            "question": question_with_prompt,
-            "uid": uid
-        }
-        
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(api_url, params=params) as resp:
-                    if resp.status != 200:
-                        return CommandResult().error(f"请求小米MiMo-V2助手失败，服务器返回错误状态码：{resp.status}")
-                    
-                    result = await resp.text()
-                    
-                    return CommandResult().message(result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("无法连接到小米MiMo-V2助手服务器，请稍后重试或检查网络连接")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"请求小米MiMo-V2助手时发生错误：{e}")
-            return CommandResult().error(f"请求小米MiMo-V2助手时发生错误：{str(e)}")
-    
-    @filter.command("联网模式")
-    async def lian_wang_mo_xing(self, message: AstrMessageEvent):
-        """联网模式，结合搜索引擎和AI进行问答"""
-        msg = message.message_str.replace("联网模式", "").strip()
-        
-        if not msg:
-            return CommandResult().error("正确指令：联网模式 <提问内容>\n\n示例：联网模式 明日方舟最厉害的是谁")
-        
-        question = msg.strip()
-        
-        try:
-            # 1. 调用搜索引擎API获取相关信息
-            search_url = "https://uapis.cn/api/v1/search/aggregate"
-            search_params = {
-                "query": question,
-                "timeout_ms": 30000,
-                "sort": "date"  # 按日期排序
-            }
-            
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                # 发送搜索引擎请求
-                async with session.post(search_url, json=search_params) as search_resp:
-                    if search_resp.status != 200:
-                        return CommandResult().error(f"搜索引擎请求失败，服务器返回错误状态码：{search_resp.status}")
-                    
-                    search_result = await search_resp.json()
-                    
-                    # 2. 整理搜索结果，提取标题、片段和发布日期
-                    search_info = []
-                    for item in search_result.get("results", [])[:5]:  # 取前5条结果
-                        title = item.get("title", "")
-                        snippet = item.get("snippet", "")
-                        publish_time = item.get("publish_time", "")
-                        if title and snippet:
-                            # 简化发布日期格式
-                            if publish_time:
-                                # 将ISO格式转换为YYYY-MM-DD格式
-                                simple_time = publish_time.split("T")[0]
-                            else:
-                                simple_time = ""
-                            search_info.append(f"标题：{title}\n片段：{snippet}\n发布日期：{simple_time}\n")
-                    
-                    # 3. 构建给DeepSeek-3.2的问题
-                    combined_question = f"用户的问题是：{question}\n\n请结合以下搜索信息回答用户问题：\n{''.join(search_info)}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。\n\n可以详细的回答用户为什么是这个答案，要简洁明了，可以解释原因"
-                    
-                    # 4. 调用DeepSeek-3.2API
-                    deepseek_url = "https://api.jkyai.top/API/depsek3.2.php"
-                    deepseek_params = {
-                        "question": combined_question
-                    }
-                    
-                    async with session.get(deepseek_url, params=deepseek_params) as deepseek_resp:
-                        if deepseek_resp.status != 200:
-                            return CommandResult().error(f"DeepSeek-3.2请求失败，服务器返回错误状态码：{deepseek_resp.status}")
-                        
-                        ai_result = await deepseek_resp.text()
-                        
-                        return CommandResult().message(ai_result)
-                        
-        except aiohttp.ClientError as e:
-            logger.error(f"网络连接错误：{e}")
-            return CommandResult().error("网络连接错误，请稍后重试")
-        except asyncio.TimeoutError:
-            logger.error("请求超时")
-            return CommandResult().error("请求超时，请稍后重试")
-        except Exception as e:
-            logger.error(f"联网模型请求时发生错误：{e}")
-            return CommandResult().error(f"请求时发生错误：{str(e)}")
-
-    async def terminate(self):
-        """插件卸载/重载时调用"""
-        pass
-        
-    async def extract_image_from_event(self, event: AstrMessageEvent) -> str:
-        """从事件中提取图片URL"""
-        messages = event.get_messages()
-
-        # 首先检查当前消息中的图片
-        for msg in messages:
-            # 标准图片组件
-            if isinstance(msg, MsgImage):
-                if hasattr(msg, "url") and msg.url:
-                    return msg.url.strip()
-                if hasattr(msg, "file") and msg.file:
-                    # 从file字段提取URL - 处理微信格式
-                    file_content = str(msg.file)
-                    if "http" in file_content:
-                        # 提取URL并移除反引号
-                        urls = re.findall(r"https?://[^\s\`\']+", file_content)
-                        if urls:
-                            return urls[0].strip("`'")
-
-            # QQ官方平台特殊处理
-            if hasattr(msg, "type") and msg.type == "Plain":
-                text = str(msg.text) if hasattr(msg, "text") else str(msg)
-                if "attachmentType=" in text and "image" in text:
-                    # 这是QQ官方的图片消息格式，需要后续消息处理
-                    continue
-
-        # 检查引用消息中的图片（Telegram等平台）
-        try:
-            # 查找Reply组件
-            for msg in messages:
-                if isinstance(msg, Reply):
-                    # Reply组件包含原始消息的信息
-                    if hasattr(msg, "chain") and msg.chain:
-                        # 在引用消息的chain中查找图片
-                        for reply_msg in msg.chain:
-                            if isinstance(reply_msg, MsgImage):
-                                if hasattr(reply_msg, "url") and reply_msg.url:
-                                    return reply_msg.url.strip()
-                                if hasattr(reply_msg, "file") and reply_msg.file:
-                                    file_content = str(reply_msg.file)
-                                    if "http" in file_content:
-                                        urls = re.findall(r"https?://[^\s\`\']+", file_content)
-                                        if urls:
-                                            return urls[0].strip("`'")
-
-        except Exception as e:
-            logger.warning(f"检查引用消息图片时出错: {str(e)}")
-
-        return None
-        
-    async def timeout_check(self, user_id: str, event: AstrMessageEvent):
-        """检查用户发送图片是否超时"""
-        try:
-            await asyncio.sleep(30)  # 等待30秒
-            if user_id in self.waiting_sessions:
-                # 超时，发送消息
-                await event.send(event.plain_result("⏰ 图片发送超时，请重新发送命令开始新的请求"))
-                # 清理会话和超时任务
-                del self.waiting_sessions[user_id]
-                if user_id in self.timeout_tasks:
-                    del self.timeout_tasks[user_id]
-        except asyncio.CancelledError:
-            # 任务被取消，说明用户已经发送了图片
-            pass
-        except Exception as e:
-            logger.error(f"超时检查出错: {str(e)}")
-            
-    async def ocr_recognize(self, image_url: str) -> str:
-        """调用OCR API识别图片中的文字"""
-        try:
-            ocr_url = "https://api.pearktrue.cn/api/ocr/"
-            payload = {
-                "file": image_url
-            }
-            
-            logger.debug(f"OCR识别请求：图片URL = {image_url}")
-            logger.debug(f"OCR API URL = {ocr_url}")
-            logger.debug(f"请求参数 = {payload}")
-            
-            # 增加超时时间到120秒
-            timeout = aiohttp.ClientTimeout(total=120)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                try:
-                    async with session.post(ocr_url, json=payload) as resp:
-                        logger.debug(f"OCR API响应状态码：{resp.status}")
-                        logger.debug(f"响应头：{resp.headers}")
-                        
-                        if resp.status != 200:
-                            resp_text = await resp.text()
-                            logger.error(f"OCR API请求失败，状态码：{resp.status}，响应内容：{resp_text}")
-                            raise Exception(f"OCR API请求失败，状态码：{resp.status}，响应：{resp_text[:100]}...")
-                        
-                        # 先读取响应文本，记录日志
-                        resp_text = await resp.text()
-                        logger.debug(f"OCR API响应内容：{resp_text}")
-                        
-                        try:
-                            result = json.loads(resp_text)
-                        except json.JSONDecodeError as json_error:
-                            logger.error(f"OCR API返回JSON格式错误：{str(json_error)}，响应内容：{resp_text}")
-                            raise Exception(f"OCR API返回JSON格式错误：{str(json_error)}")
-                        
-                        if result.get("code") != 200:
-                            logger.error(f"OCR识别失败：{result.get('msg', '未知错误')}")
-                            raise Exception(f"OCR识别失败：{result.get('msg', '未知错误')}")
-                        
-                        # 获取识别结果
-                        parsed_text = result.get("data", {}).get("ParsedText", "")
-                        if not parsed_text:
-                            # 如果ParsedText为空，尝试从TextLine拼接
-                            text_lines = result.get("data", {}).get("TextLine", [])
-                            parsed_text = "\n".join(text_lines)
-                        
-                        logger.debug(f"OCR识别成功，识别结果：{parsed_text[:100]}...")
-                        return parsed_text.strip()
-                except asyncio.TimeoutError:
-                    logger.error(f"OCR API请求超时，图片URL：{image_url}")
-                    raise Exception("OCR识别超时，请稍后重试")
-                except aiohttp.ClientError as client_error:
-                    logger.error(f"OCR API网络请求错误：{str(client_error)}，图片URL：{image_url}")
-                    raise Exception(f"OCR识别网络错误：{str(client_error)}")
-        except Exception as e:
-            logger.error(f"OCR识别出错: {str(e)}")
-            logger.exception("OCR识别异常详情")
-            raise
-            
-    async def process_image_question_solving(self, event: AstrMessageEvent, image_url: str):
-        """处理图片解题的完整流程"""
-        try:
-            # 1. 调用OCR识别图片中的题目
-            yield CommandResult().message("正在识别图片中的题目，请稍候...")
-            try:
-                question_text = await self.ocr_recognize(image_url)
-            except asyncio.TimeoutError:
-                yield CommandResult().error("OCR识别超时，服务器响应过慢\n\n建议：\n1. 检查网络连接\n2. 确保图片清晰可辨\n3. 稍后重试")
-                return
-            except Exception as ocr_error:
-                yield CommandResult().error(f"OCR识别失败：{str(ocr_error)}\n\n建议：\n1. 检查网络连接\n2. 确保图片清晰可辨\n3. 稍后重试")
-                return
-            
-            if not question_text:
-                yield CommandResult().error("OCR识别失败，未能从图片中提取到题目内容")
-                return
-            
-            # 2. 调用万能解题助手API
-            yield CommandResult().message("正在解题，请稍候...")
-            api_url = "https://api.jkyai.top/API/wnjtzs.php"
-            params = {
-                "question": question_text,
-                "type": "json"  # 返回json格式，便于解析
-            }
-            
-            timeout = aiohttp.ClientTimeout(total=120)  # 延长超时时间到120秒
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                try:
-                    async with session.get(api_url, params=params) as resp:
-                        if resp.status != 200:
-                            yield CommandResult().error(f"解题助手请求失败，服务器返回错误状态码：{resp.status}")
-                            return
-                        
-                        # 检查响应头的Content-Type
-                        content_type = resp.headers.get('Content-Type', '')
-                        if 'application/json' not in content_type:
-                            # 如果不是json，先尝试读取文本内容
-                            text_content = await resp.text()
-                            yield CommandResult().error(f"解题助手返回格式错误，预期JSON但得到：{text_content[:100]}...")
-                            return
-                        
-                        try:
-                            result = await resp.json()
-                        except json.JSONDecodeError as e:
-                            yield CommandResult().error(f"解题助手返回JSON格式错误：{str(e)}")
-                            return
-                        
-                        # 3. 解析API返回结果
-                        status = result.get("status", "")
-                        if status != "success":
-                            error_msg = result.get("answer", "解题助手请求失败")
-                            yield CommandResult().error(f"解题助手请求失败：{error_msg}")
-                            return
-                        
-                        # 获取data字段
-                        data = result.get("data", {})
-                        answer = data.get("answer", "")
-                        
-                        # 获取created_at
-                        metadata = data.get("metadata", {})
-                        created_at = metadata.get("created_at", "")
-                        
-                        # 4. 提取思考过程和答案
-                        # 从answer中提取思考过程和答案
-                        # answer格式：<Think>思考内容</Think>【解题答案：答案内容】
-                        think_start = answer.find("<Think>")
-                        think_end = answer.find("</Think>")
-                        if think_start != -1 and think_end != -1:
-                            thinking = answer[think_start+6:think_end].strip()
-                            answer_content = answer[think_end+8:].strip()
-                            # 移除可能的【解题答案：】前缀
-                            if answer_content.startswith("【解题答案："):
-                                answer_content = answer_content[7:].strip()
-                                if answer_content.endswith("】"):
-                                    answer_content = answer_content[:-1].strip()
-                        else:
-                            # 如果没有<Think>标签，直接使用answer作为答案
-                            thinking = ""  # 没有思考过程
-                            answer_content = answer.strip()
-                        
-                        # 5. 格式化内容
-                        formatted_content = f"题目：\n{question_text}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
-                        
-                        # 6. 生成图片
-                        try:
-                            # 返回处理中的提示
-                            yield CommandResult().message("正在生成图片，请稍候...")
-                            
-                            image_url = await self.text_to_image_menu_style(formatted_content)
-                            yield event.image_result(image_url)
-                        except Exception as img_error:
-                            logger.error(f"生成图片失败：{img_error}")
-                            # 详细记录错误信息
-                            logger.exception("生成图片时发生异常")
-                            # 如果生成图片失败，直接返回文本格式
-                            yield CommandResult().message(f"图片生成失败，以下是文本答案：\n\n{formatted_content}")
-                except asyncio.TimeoutError:
-                    yield CommandResult().error("解题助手请求超时，服务器响应过慢\n\n建议：\n1. 检查网络连接\n2. 稍后重试")
-                    return
-                except aiohttp.ClientError as client_error:
-                    yield CommandResult().error(f"解题助手网络请求失败：{str(client_error)}\n\n建议：\n1. 检查网络连接\n2. 稍后重试")
-                    return
-                        
-        except Exception as e:
-            logger.error(f"图片解题失败：{str(e)}")
-            logger.exception("图片解题异常详情")
-            # 增加更友好的错误提示
-            yield CommandResult().error(f"图片解题失败：{str(e)}\n\n可能的原因：\n1. 图片链接不可访问\n2. 图片中没有可识别的文字\n3. 网络连接问题\n4. 服务器暂时不可用\n\n请检查图片是否清晰可辨，或稍后重试")
-    
     # 菜单样式的HTML模板
     MENU_TEMPLATE = '''
     <!DOCTYPE html>
@@ -1028,7 +66,7 @@ class Main(Star):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>大模型菜单</title>
+        <title>工具箱菜单</title>
         <style>
             body {
                 font-family: 'Microsoft YaHei', Arial, sans-serif;
@@ -1066,7 +104,7 @@ class Main(Star):
                 text-transform: uppercase;
                 letter-spacing: 1px;
             }
-            .model-item {
+            .menu-item {
                 font-size: 18px;
                 line-height: 2.2;
                 margin: 15px 0;
@@ -1075,32 +113,52 @@ class Main(Star):
                 border-radius: 8px;
                 border-left: 4px solid #ffc107;
             }
-            .model-name {
+            .command-name {
                 font-weight: bold;
                 color: #dc3545;
                 font-size: 20px;
             }
-            .model-format {
+            .command-format {
                 color: #333;
                 font-weight: normal;
             }
-            .example {
-                color: #6c757d;
-                margin: 0 10px;
-            }
-            .model-desc {
+            .command-desc {
                 color: #495057;
                 font-weight: bold;
             }
-            .separator {
-                color: #adb5bd;
-                margin: 0 10px;
+            .example-section {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 2px solid #e9ecef;
+            }
+            .example-title {
+                font-size: 22px;
+                font-weight: bold;
+                color: #6f42c1;
+                margin-bottom: 20px;
+            }
+            .example-item {
+                font-size: 16px;
+                line-height: 1.8;
+                margin: 10px 0;
+                padding: 10px;
+                background-color: #e7f5ff;
+                border-radius: 6px;
+                border-left: 4px solid #007bff;
+            }
+            .note-section {
+                margin-top: 30px;
+                padding: 15px;
+                background-color: #fff3cd;
+                border: 1px solid #ffeeba;
+                border-radius: 6px;
+                color: #856404;
             }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1 class="menu-title">大模型菜单</h1>
+            <h1 class="menu-title">🔧 工具箱插件菜单 🔧</h1>
             {{content}}
         </div>
     </body>
@@ -1113,59 +171,72 @@ class Main(Star):
             # 将文本内容转换为结构化HTML
             lines = text.split('\n')
             html_parts = []
-            current_section = ""
+            in_example_section = False
             
             for line in lines:
                 line = line.rstrip()
                 
-                # 检测是否为大模型菜单
-                if line == "大模型菜单":
-                    # 大模型菜单标题已在模板中处理
+                # 跳过标题行（已在模板中处理）
+                if line == "🔧 工具箱插件菜单 🔧":
                     continue
                 
                 # 检测分类标题
-                elif line.startswith('一、') or line.startswith('二、') or line.startswith('三、') or line.startswith('四、'):
-                    category_name = line.split('、')[1]
+                elif line.startswith('【') and line.endswith('】'):
+                    category_name = line.strip('【】')
                     html_parts.append(f'<h2 class="category-title">{category_name}</h2>')
+                    in_example_section = False
                     continue
                 
-                # 检测模型条目
-                elif ' - ' in line:
-                    # 解析模型条目
-                    model_part, desc_part = line.split(' - ', 1)
-                    
-                    # 检测是否包含示例格式
-                    if '<提问内容>' in model_part or '<6位数字>' in model_part or '<图片>' in model_part or '<题目内容>' in model_part:
-                        # 这是一个模型命令格式
-                        model_format = model_part.strip()
-                        model_desc = desc_part.strip()
-                        
-                        # 提取模型名称
-                        if ' ' in model_format:
-                            model_name = model_format.split(' ')[0]
-                        else:
-                            model_name = model_format
-                        
-                        # 生成示例
-                        example = model_format.replace('<提问内容>', '1+1').replace('<6位数字>', '123456').replace('<图片>', '[图片]').replace('<题目内容>', '1+1')
-                        
-                        # 生成HTML
-                        html_parts.append(f'<div class="model-item">')
-                        html_parts.append(f'<span class="model-name">{model_name}</span> ')
-                        html_parts.append(f'<span class="model-format">{model_format}</span> ')
-                        html_parts.append(f'<span class="separator">---------------</span> ')
-                        html_parts.append(f'<span class="example">示例：{example}（注意有空格）</span> ')
-                        html_parts.append(f'<span class="separator">----------</span> ')
-                        html_parts.append(f'<span class="model-desc">{model_desc}</span>')
-                        html_parts.append(f'</div>')
+                # 检测使用示例部分
+                elif line.startswith('📌 使用示例：'):
+                    html_parts.append(f'<div class="example-section">')
+                    html_parts.append(f'<h3 class="example-title">📌 使用示例：</h3>')
+                    in_example_section = True
+                    continue
+                
+                # 检测注意事项部分
+                elif line.startswith('💡 所有命令'):
+                    html_parts.append(f'<div class="note-section">{line}</div>')
+                    in_example_section = False
+                    continue
                 
                 # 处理空行
                 elif line.strip() == '':
                     continue
                 
+                # 处理示例条目
+                elif in_example_section:
+                    html_parts.append(f'<div class="example-item">{line}</div>')
+                
+                # 处理命令条目
+                elif ' - ' in line:
+                    # 解析命令条目
+                    command_part, desc_part = line.split(' - ', 1)
+                    
+                    # 提取命令名称和格式
+                    command_format = command_part.strip()
+                    command_desc = desc_part.strip()
+                    
+                    # 提取命令名称（第一个空格前的内容）
+                    if ' ' in command_format:
+                        command_name = command_format.split(' ')[0]
+                    else:
+                        command_name = command_format
+                    
+                    # 生成HTML
+                    html_parts.append(f'<div class="menu-item">')
+                    html_parts.append(f'<span class="command-name">{command_name}</span> ')
+                    html_parts.append(f'<span class="command-format">{command_format}</span> ')
+                    html_parts.append(f'<span class="command-desc">- {command_desc}</span>')
+                    html_parts.append(f'</div>')
+                
                 # 处理其他文本行
                 else:
                     html_parts.append(f'<div class="content-line">{line}</div>')
+            
+            # 关闭示例部分标签
+            if in_example_section:
+                html_parts.append(f'</div>')
             
             # 组装最终HTML内容
             formatted_html = '\n'.join(html_parts)
@@ -1192,216 +263,689 @@ class Main(Star):
             logger.error(f"菜单样式图片生成失败：{e}")
             # 回退到默认的text_to_image方法
             return await self.text_to_image(text)
-    
-    @filter.command("解题助手")
-    async def jie_ti_zhu_shou(self, message: AstrMessageEvent):
-        """解题助手，支持数学和物理方面的题目，返回图片格式的解题结果"""
-        msg = message.message_str.replace("解题助手", "").strip()
+
+    @filter.regex(r"^(早安|晚安)")
+    async def good_morning(self, message: AstrMessageEvent):
+        """和Bot说早晚安，记录睡眠时间，培养良好作息"""
+        umo_id = message.unified_msg_origin
+        user_id = message.message_obj.sender.user_id
+        user_name = message.message_obj.sender.nickname
+        curr_utc8 = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+        curr_human = curr_utc8.strftime("%Y-%m-%d %H:%M:%S")
+
+        if self.check_good_morning_cd(user_id, curr_utc8):
+            yield message.plain_result("你刚刚已经说过早安/晚安了，请30分钟后再试喵~").use_t2i(False)
+            return
+
+        is_night = "晚安" in message.message_str
+
+        if umo_id in self.good_morning_data:
+            umo = self.good_morning_data[umo_id]
+        else:
+            umo = {}
+        if user_id in umo:
+            user = umo[user_id]
+        else:
+            user = {
+                "daily": {
+                    "morning_time": "",
+                    "night_time": "",
+                }
+            }
+
+        if is_night:
+            user["daily"]["night_time"] = curr_human
+            user["daily"]["morning_time"] = ""
+        else:
+            user["daily"]["morning_time"] = curr_human
+
+        umo[user_id] = user
+        self.good_morning_data[umo_id] = umo
+
+        with open(f"data/{self.PLUGIN_NAME}_data.json", "w", encoding="utf-8") as f:
+            f.write(json.dumps(self.good_morning_data, ensure_ascii=False, indent=2))
+            
+        self.update_good_morning_cd(user_id, curr_utc8)
+
+        curr_day: int = curr_utc8.day
+        curr_date_str = curr_utc8.strftime("%Y-%m-%d")
+
+        self.invalidate_sleep_cache(umo_id, curr_date_str)
+        curr_day_sleeping = 0
+        for v in umo.values():
+            if v["daily"]["night_time"] and not v["daily"]["morning_time"]:
+                user_day = datetime.datetime.strptime(
+                    v["daily"]["night_time"], "%Y-%m-%d %H:%M:%S"
+                ).day
+                if user_day == curr_day:
+                    curr_day_sleeping += 1
+        
+        self.update_sleep_cache(umo_id, curr_date_str, curr_day_sleeping)
+
+        if not is_night:
+            sleep_duration_human = ""
+            if user["daily"]["night_time"]:
+                night_time = datetime.datetime.strptime(
+                    user["daily"]["night_time"], "%Y-%m-%d %H:%M:%S"
+                )
+                morning_time = datetime.datetime.strptime(
+                    user["daily"]["morning_time"], "%Y-%m-%d %H:%M:%S"
+                )
+                sleep_duration = (morning_time - night_time).total_seconds()
+                hrs = int(sleep_duration / 3600)
+                mins = int((sleep_duration % 3600) / 60)
+                sleep_duration_human = f"{hrs}小时{mins}分"
+
+            yield message.plain_result(
+                f"早上好喵，{user_name}！\n现在是 {curr_human}，昨晚你睡了 {sleep_duration_human}。"
+            ).use_t2i(False)
+        else:
+            yield message.plain_result(
+                f"快睡觉喵，{user_name}！\n现在是 {curr_human}，你是本群今天第 {curr_day_sleeping} 个睡觉的。"
+            ).use_t2i(False)
+
+
+
+    @filter.command("战力查询")
+    async def hero_power(self, message: AstrMessageEvent):
+        """王者英雄战力查询，支持双区双系统"""
+        msg = message.message_str.replace("战力查询", "").strip()
         
         if not msg:
-            yield CommandResult().error("正确指令：解题助手 <题目内容>\n\n示例：解题助手 1+1")
+            yield message.plain_result("缺少参数，正确示例：\n\n战力查询 小乔").use_t2i(False)
             return
         
-        question = msg.strip()
+        hero_name = msg.strip()
+        api_url = "https://www.sapi.run/hero/select.php"
         
         try:
-            # 1. 调用万能解题助手API
-            api_url = "https://api.jkyai.top/API/wnjtzs.php"
+            # 默认使用aqq（安卓-QQ区）进行查询
             params = {
-                "question": question,
-                "type": "json"  # 返回json格式，便于解析
+                "hero": hero_name,
+                "type": "aqq"
             }
             
-            timeout = aiohttp.ClientTimeout(total=120)  # 延长超时时间到120秒
+            timeout = aiohttp.ClientTimeout(total=30)
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(api_url, params=params) as resp:
                     if resp.status != 200:
-                        yield CommandResult().error(f"解题助手请求失败，服务器返回错误状态码：{resp.status}")
+                        yield message.plain_result("请求战力查询失败，服务器返回错误状态码").use_t2i(False)
                         return
                     
-                    # 检查响应头的Content-Type
-                    content_type = resp.headers.get('Content-Type', '')
-                    if 'application/json' not in content_type:
-                        # 如果不是json，先尝试读取文本内容
-                        text_content = await resp.text()
-                        yield CommandResult().error(f"解题助手返回格式错误，预期JSON但得到：{text_content[:100]}...")
+                    # 先读取响应文本，再使用json.loads()解析，解决Content-Type问题
+                    raw_content = await resp.text()
+                    result = json.loads(raw_content)
+                    
+                    if result.get("code") != 200:
+                        yield message.plain_result(f"查询失败：{result.get('msg', '未知错误')}").use_t2i(False)
                         return
                     
-                    try:
-                        result = await resp.json()
-                    except json.JSONDecodeError as e:
-                        yield CommandResult().error(f"解题助手返回JSON格式错误：{str(e)}")
-                        return
-                    
-                    # 2. 解析API返回结果
-                    status = result.get("status", "")
-                    if status != "success":
-                        error_msg = result.get("answer", "解题助手请求失败")
-                        yield CommandResult().error(f"解题助手请求失败：{error_msg}")
-                        return
-                    
-                    # 获取data字段
                     data = result.get("data", {})
-                    answer = data.get("answer", "")
+                    if not data:
+                        yield message.plain_result("未查询到该英雄的战力信息").use_t2i(False)
+                        return
                     
-                    # 获取created_at
-                    metadata = data.get("metadata", {})
-                    created_at = metadata.get("created_at", "")
+                    # 格式化输出结果
+                    response = f"{data.get('name', hero_name)}\n"
+                    response += f"国服最低：{data.get('guobiao', '0')}\n"
+                    response += f"【{data.get('province', '未知省')}】省标最低：{data.get('provincePower', '0')}\n"
+                    response += f"【{data.get('city', '未知市')}】市标最低：{data.get('cityPower', '0')}\n"
+                    response += f"【{data.get('area', '未知区')}】区标最低：{data.get('areaPower', '0')}"
                     
-                    # 3. 提取思考过程和答案
-                    # 从answer中提取思考过程和答案
-                    # answer格式：<Think>思考内容</Think>【解题答案：答案内容】
-                    think_start = answer.find("<Think>")
-                    think_end = answer.find("</Think>")
-                    if think_start != -1 and think_end != -1:
-                        thinking = answer[think_start+6:think_end].strip()
-                        answer_content = answer[think_end+8:].strip()
-                        # 移除可能的【解题答案：】前缀
-                        if answer_content.startswith("【解题答案："):
-                            answer_content = answer_content[7:].strip()
-                            if answer_content.endswith("】"):
-                                answer_content = answer_content[:-1].strip()
-                    else:
-                        # 如果没有<Think>标签，直接使用answer作为答案
-                        thinking = ""  # 没有思考过程
-                        answer_content = answer.strip()
-                    
-                    # 4. 格式化内容
-                    formatted_content = f"题目：\n{question}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
-                    
-                    # 5. 生成图片
-                    try:
-                        # 先返回一个处理中的提示
-                        yield CommandResult().message("正在生成图片，请稍候...")
-                        
-                        image_url = await self.text_to_image_menu_style(formatted_content)
-                        yield message.image_result(image_url)
-                    except Exception as img_error:
-                        logger.error(f"生成图片失败：{img_error}")
-                        # 详细记录错误信息
-                        logger.exception("生成图片时发生异常")
-                        # 如果生成图片失败，直接返回文本格式
-                        yield CommandResult().message(f"图片生成失败，以下是文本答案：\n\n{formatted_content}")
+                    yield message.plain_result(response).use_t2i(False)
+                    return
                         
         except aiohttp.ClientError as e:
             logger.error(f"网络连接错误：{e}")
-            yield CommandResult().error("无法连接到解题助手服务器，请稍后重试")
+            yield message.plain_result("无法连接到战力查询服务器，请稍后重试或检查网络连接").use_t2i(False)
+            return
         except asyncio.TimeoutError:
             logger.error("请求超时")
-            yield CommandResult().error("请求超时，请稍后重试")
+            yield message.plain_result("请求超时，请稍后重试").use_t2i(False)
+            return
+        except json.JSONDecodeError:
+            logger.error("JSON解析错误")
+            yield message.plain_result("服务器返回数据格式错误").use_t2i(False)
+            return
         except Exception as e:
-            logger.error(f"解题助手请求时发生错误：{e}")
-            yield CommandResult().error(f"请求时发生错误：{str(e)}")
-    
-    @filter.command("图片解题助手")
-    async def tu_pian_jie_ti_zhu_shou(self, message: AstrMessageEvent):
-        """图片解题助手，支持识别图片中的题目并解题，返回图片格式的解题结果"""
-        user_id = message.get_sender_id()
+            logger.error(f"请求战力查询时发生错误：{e}")
+            yield message.plain_result(f"请求战力查询时发生错误：{str(e)}").use_t2i(False)
+            return
+
+    @filter.command("路线查询")
+    async def city_route(self, message: AstrMessageEvent):
+        """城际路线查询，支持异步请求"""
+        msg = message.message_str.replace("路线查询", "").strip()
         
-        # 检查当前消息是否包含图片
-        image_url = await self.extract_image_from_event(message)
-        if image_url:
-            # 如果找到图片，直接进行处理
-            async for result in self.process_image_question_solving(message, image_url):
-                yield result
+        if not msg:
+            yield message.plain_result("正确指令：路线查询 <出发地> <目的地>\n\n示例：路线查询 广州 深圳").use_t2i(False)
             return
         
-        # 如果没有图片，设置等待状态
-        self.waiting_sessions[user_id] = {
-            "timestamp": asyncio.get_event_loop().time(),
-            "event": message  # 保存事件对象用于后续处理
-        }
+        # 解析出发地和目的地
+        parts = msg.split()
+        if len(parts) < 2:
+            yield message.plain_result("请输入完整的出发地和目的地\n\n正确指令：路线查询 <出发地> <目的地>\n\n示例：路线查询 广州 深圳").use_t2i(False)
+            return
         
-        # 创建30秒超时任务
-        if user_id in self.timeout_tasks:
-            self.timeout_tasks[user_id].cancel()  # 取消之前的超时任务
+        from_city = parts[0]
+        to_city = parts[1]
         
-        timeout_task = asyncio.create_task(self.timeout_check(user_id, message))
-        self.timeout_tasks[user_id] = timeout_task
+        api_url = "https://api.pearktrue.cn/api/citytravelroutes/"
         
-        yield CommandResult().message("📷 请发送要识别的图片（30秒内有效）")
-    
-    @filter.command("大模型菜单")
-    async def da_mo_xing_cai_dan(self, message: AstrMessageEvent):
-        """大模型菜单，显示所有可用的AI助手命令"""
         try:
-            # 构建菜单内容
-            menu_content = "大模型菜单\n\n"
+            # 构造请求参数
+            payload = {
+                "from": from_city,
+                "to": to_city
+            }
             
-            # 1. 单次问答模型
-            menu_content += "一、单次问答模型\n"
-            menu_content += "腾讯元宝 <提问内容> - 腾讯元宝助手\n"
-            menu_content += "deep3.2 <提问内容> - DeepSeek-3.2助手\n"
-            menu_content += "deep3.1 <提问内容> - DeepSeek-3.1助手\n"
-            menu_content += "deepR1 <提问内容> - DeepSeek-R1助手\n"
-            menu_content += "智谱 <提问内容> - 智谱GLM4.6助手\n"
-            menu_content += "夸克 <提问内容> - 夸克AI助手\n"
-            menu_content += "蚂蚁 <提问内容> - 蚂蚁Ling2.0-1tAI助手\n"
-            menu_content += "豆包 <提问内容> - 字节跳动豆包AI助手\n"
-            menu_content += "阿里 <提问内容> - 阿里云千问Qwen3-235bAI助手\n"
-            menu_content += "讯飞 <提问内容> - 讯飞星火X1AI助手\n"
-            menu_content += "\n"
-            
-            # 2. 记忆模型
-            menu_content += "二、记忆模型\n"
-            menu_content += "gpt5 <6位数字> <提问内容> - GPT5-nano助手\n"
-            menu_content += "克劳德 <6位数字> <提问内容> - Claude4.5-hiku助手\n"
-            menu_content += "千问 <6位数字> <提问内容> - 通义千问助手\n"
-            menu_content += "gpt <6位数字> <提问内容> - ChatGPT-ossAI助手\n"
-            menu_content += "谷歌 <6位数字> <提问内容> - 谷歌Gemini-2.5AI助手\n"
-            menu_content += "小米 <6位数字> <提问内容> - 小米MiMo-V2助手\n"
-            menu_content += "\n"
-            
-            # 3. 联网模式
-            menu_content += "三、联网模式\n"
-            menu_content += "联网模式 <提问内容> - 结合搜索引擎和DeepSeek-3.2AI进行问答\n"
-            menu_content += "\n"
-            
-            # 4. 解题模型
-            menu_content += "四、解题模型\n"
-            menu_content += "解题助手 <题目内容> - 调用万能解题助手，返回图片结果\n"
-            menu_content += "图片解题助手 <图片> - 识别图片中的题目并解题，返回图片结果\n"
-            
-            # 生成图片
-            try:
-                # 返回处理中的提示
-                yield CommandResult().message("正在生成大模型菜单，请稍候...")
-                
-                image_url = await self.text_to_image_menu_style(menu_content)
-                yield message.image_result(image_url)
-            except Exception as img_error:
-                logger.error(f"生成大模型菜单图片失败：{img_error}")
-                logger.exception("生成大模型菜单图片时发生异常")
-                # 如果生成图片失败，直接返回文本格式
-                yield CommandResult().message(f"图片生成失败，以下是大模型菜单：\n\n{menu_content}")
-                
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(api_url, json=payload) as resp:
+                    if resp.status != 200:
+                        yield message.plain_result("请求路线查询失败，服务器返回错误状态码").use_t2i(False)
+                        return
+                    
+                    # 先读取响应文本，再使用json.loads()解析，解决Content-Type问题
+                    raw_content = await resp.text()
+                    result = json.loads(raw_content)
+                    
+                    if result.get("code") != 200:
+                        yield message.plain_result(f"查询失败：{result.get('msg', '未知错误')}").use_t2i(False)
+                        return
+                    
+                    data = result.get("data", {})
+                    if not data:
+                        yield message.plain_result("未查询到该路线的信息").use_t2i(False)
+                        return
+                    
+                    # 格式化输出结果
+                    response = f"{result.get('from', from_city)} -> {result.get('to', to_city)}\n"
+                    response += f"路线：{data.get('corese', '')}\n"
+                    response += f"总距离：{data.get('distance', '0')}\n"
+                    response += f"总耗时：{data.get('time', '0')}\n"
+                    response += f"油费：{data.get('fuelcosts', '0')}\n"
+                    response += f"过桥费：{data.get('bridgetoll', '0')}\n"
+                    response += f"总费用：{data.get('totalcost', '0')}\n"
+                    response += f"路况：{data.get('roadconditions', '暂无数据')}"
+                    
+                    yield message.plain_result(response).use_t2i(False)
+                    return
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            yield message.plain_result("无法连接到路线查询服务器，请稍后重试或检查网络连接").use_t2i(False)
+            return
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            yield message.plain_result("请求超时，请稍后重试").use_t2i(False)
+            return
+        except json.JSONDecodeError:
+            logger.error("JSON解析错误")
+            yield message.plain_result("服务器返回数据格式错误").use_t2i(False)
+            return
         except Exception as e:
-            logger.error(f"生成大模型菜单失败：{e}")
-            yield CommandResult().error(f"生成大模型菜单失败：{str(e)}")
-    
-    @filter.event_message_type(filter.EventMessageType.ALL)
-    async def on_message(self, event: AstrMessageEvent):
-        """监听所有消息，处理等待中的图片请求"""
-        user_id = event.get_sender_id()
+            logger.error(f"请求路线查询时发生错误：{e}")
+            yield message.plain_result(f"请求路线查询时发生错误：{str(e)}").use_t2i(False)
+            return
+
+    @filter.command("绘画")
+    async def ai_painting(self, message: AstrMessageEvent):
+        """AI绘画功能，根据提示词生成图片"""
+        # 提取提示词，命令匹配会自动处理命令前缀
+        msg = message.message_str.replace("绘画", "").strip()
         
-        # 检查用户是否在等待图片
-        if user_id not in self.waiting_sessions:
+        if not msg:
+            yield message.plain_result("正确指令：绘画 <提示词>\n\n示例：绘画 一条狗").use_t2i(False)
             return
         
-        # 提取图片URL
-        image_url = await self.extract_image_from_event(event)
-        if not image_url:
-            return  # 不是图片消息，继续等待
+        prompt = msg.strip()
+        api_url = "https://api.jkyai.top/API/ks/api.php"
         
-        # 找到图片，开始处理
-        original_event = self.waiting_sessions[user_id]["event"]
+        try:
+            # 先回复用户正在生成图片
+            yield message.plain_result("正在制作精美图片..........").use_t2i(False)
+            
+            # 构造请求参数，使用默认的1024x1024大小，guidance设为最高10，batch为1
+            params = {
+                "msg": prompt,
+                "size": "1024x1024",
+                "guidance": 10,
+                "batch": 1
+            }
+            
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(api_url, params=params) as resp:
+                    if resp.status != 200:
+                        yield message.plain_result("请求AI绘画失败，服务器返回错误状态码").use_t2i(False)
+                        return
+                    
+                    image_url = await resp.text()
+                    
+                    # 检查返回的是否为有效的URL
+                    if not image_url.startswith("http"):
+                        yield message.plain_result(f"AI绘画生成失败：{image_url}").use_t2i(False)
+                        return
+                    
+                    # 下载图片到本地并发送
+                    import uuid
+                    import os
+                    from astrbot.api.message_components import Image
+                    
+                    # 创建存储目录
+                    save_dir = f"data/{self.PLUGIN_NAME}_images"
+                    if not os.path.exists(save_dir):
+                        os.makedirs(save_dir)
+                    
+                    # 生成唯一文件名
+                    file_name = f"{uuid.uuid4().hex}.jpg"
+                    file_path = os.path.join(save_dir, file_name)
+                    
+                    # 下载图片
+                    async with session.get(image_url, timeout=30) as img_resp:
+                        if img_resp.status != 200:
+                            yield message.plain_result("下载图片失败，服务器返回错误状态码").use_t2i(False)
+                            return
+                        
+                        with open(file_path, "wb") as f:
+                            f.write(await img_resp.read())
+                    
+                    # 使用本地文件路径发送图片
+                    yield message.chain_result([Image.fromFileSystem(file_path)]).use_t2i(False)
+                    return
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            yield message.plain_result("无法连接到AI绘画服务器，请稍后重试或检查网络连接").use_t2i(False)
+            return
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            yield message.plain_result("请求超时，请稍后重试").use_t2i(False)
+            return
+        except Exception as e:
+            logger.error(f"请求AI绘画时发生错误：{e}")
+            yield message.plain_result(f"请求AI绘画时发生错误：{str(e)}").use_t2i(False)
+            return
+
+    @filter.command("mc服务器")
+    async def mc_server_status(self, message: AstrMessageEvent):
+        """查询Minecraft服务器状态"""
+        # 提取服务器地址参数
+        msg = message.message_str.replace("mc服务器", "").strip()
         
-        # 清理会话和超时任务
-        del self.waiting_sessions[user_id]
-        if user_id in self.timeout_tasks:
-            self.timeout_tasks[user_id].cancel()
-            del self.timeout_tasks[user_id]
+        if not msg:
+            yield message.plain_result("缺少必要参数，正确示例：\n\nmc服务器 121.com").use_t2i(False)
+            return
         
-        # 处理图片解题
-        async for result in self.process_image_question_solving(original_event, image_url):
-            await original_event.send(result)
+        server_addr = msg.strip()
+        api_url = "https://uapis.cn/api/v1/game/minecraft/serverstatus"
+        
+        try:
+            # 构造请求参数
+            params = {
+                "server": server_addr
+            }
+            
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(api_url, params=params) as resp:
+                    if resp.status != 200:
+                        raw_content = await resp.text()
+                        result = json.loads(raw_content)
+                        yield message.plain_result(f"查询失败：{result.get('message', '未知错误')}").use_t2i(False)
+                        return
+                    
+                    raw_content = await resp.text()
+                    data = json.loads(raw_content)
+                    
+                    if data.get('code') != 200:
+                        yield message.plain_result(f"查询失败：{data.get('message', '未知错误')}").use_t2i(False)
+                        return
+                    
+                    # 格式化输出结果
+                    online_status = "是" if data.get('online') else "否"
+                    response = f"查询【{server_addr}】成功！\n"
+                    response += f"是否在线：{online_status}\n"
+                    response += f"ip:{data.get('ip', '未知')}\n"
+                    response += f"端口：{data.get('port', 25565)}\n"
+                    response += f"玩家数：{data.get('players', 0)}\n"
+                    response += f"最大玩家数：{data.get('max_players', 0)}\n"
+                    response += f"版本：{data.get('version', '未知')}"
+                    
+                    yield message.plain_result(response).use_t2i(False)
+                    return
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            yield message.plain_result("无法连接到查询服务器，请稍后重试或检查网络连接").use_t2i(False)
+            return
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            yield message.plain_result("请求超时，请稍后重试").use_t2i(False)
+            return
+        except json.JSONDecodeError:
+            logger.error("JSON解析错误")
+            yield message.plain_result("服务器返回数据格式错误").use_t2i(False)
+            return
+        except Exception as e:
+            logger.error(f"请求Minecraft服务器查询时发生错误：{e}")
+            yield message.plain_result(f"请求Minecraft服务器查询时发生错误：{str(e)}").use_t2i(False)
+            return
+
+    @filter.command("代理ip")
+    async def proxy_ip(self, message: AstrMessageEvent):
+        """获取socks5代理IP信息"""
+        api_url = "https://api.pearktrue.cn/api/proxy/"
+        
+        try:
+            # 构造请求参数，默认获取socks5代理
+            params = {
+                "agreement": "socks5"
+            }
+            
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(api_url, params=params) as resp:
+                    if resp.status != 200:
+                        yield message.plain_result("请求代理IP失败，服务器返回错误状态码").use_t2i(False)
+                        return
+                    
+                    # 先读取响应文本，再使用json.loads()解析，解决Content-Type问题
+                    raw_content = await resp.text()
+                    result = json.loads(raw_content)
+                    
+                    if result.get("code") != 200:
+                        yield message.plain_result(f"获取失败：{result.get('msg', '未知错误')}").use_t2i(False)
+                        return
+                    
+                    # 格式化输出结果
+                    response = f"成功获取ip\n"
+                    response += f"时间：{result.get('time', '未知')}\n"
+                    response += f"类型：{result.get('type', '未知')}\n"
+                    response += f"ip:{result.get('proxy', '未知')}"
+                    
+                    yield message.plain_result(response).use_t2i(False)
+                    return
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            yield message.plain_result("无法连接到代理IP服务器，请稍后重试或检查网络连接").use_t2i(False)
+            return
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            yield message.plain_result("请求超时，请稍后重试").use_t2i(False)
+            return
+        except json.JSONDecodeError:
+            logger.error("JSON解析错误")
+            yield message.plain_result("服务器返回数据格式错误").use_t2i(False)
+            return
+        except Exception as e:
+            logger.error(f"请求代理IP时发生错误：{e}")
+            yield message.plain_result(f"请求代理IP时发生错误：{str(e)}").use_t2i(False)
+            return
+
+    @filter.command("油价查询")
+    async def oil_price(self, message: AstrMessageEvent):
+        """查询指定城市的油价信息"""
+        # 提取城市名称参数
+        msg = message.message_str.replace("油价查询", "").strip()
+        
+        if not msg:
+            yield message.plain_result("正确指令：油价查询 <城市名>\n\n示例：油价查询 上海").use_t2i(False)
+            return
+        
+        city_name = msg.strip()
+        api_url = "https://free.wqwlkj.cn/wqwlapi/oilprice.php"
+        
+        try:
+            # 构造请求参数
+            params = {
+                "city": city_name,
+                "type": "json"
+            }
+            
+            # 添加详细日志
+            logger.info(f"开始查询{city_name}的油价，API地址：{api_url}，参数：{params}")
+            
+            timeout = aiohttp.ClientTimeout(total=60)  # 延长超时时间到60秒
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(api_url, params=params) as resp:
+                    logger.info(f"油价查询响应状态码：{resp.status}")
+                    logger.info(f"油价查询响应头：{resp.headers}")
+                    
+                    if resp.status != 200:
+                        yield message.plain_result(f"请求油价查询失败，服务器返回错误状态码：{resp.status}").use_t2i(False)
+                        return
+                    
+                    # 先读取原始响应内容，方便调试
+                    raw_content = await resp.text()
+                    logger.info(f"油价查询原始响应：{raw_content}")
+                    
+                    # 尝试解析JSON，使用json.loads()直接解析文本
+                    result = json.loads(raw_content)
+                    
+                    logger.info(f"油价查询解析结果：{result}")
+                    
+                    if result.get("code") != 1:
+                        yield message.plain_result(f"查询失败：{result.get('msg', '未知错误')}").use_t2i(False)
+                        return
+                    
+                    # 格式化输出结果
+                    data = result.get("data", [])
+                    qushi = result.get("qushi", "")
+                    
+                    # 提取不同类型的油价
+                    oil_prices = {}
+                    for item in data:
+                        oil_type = item.get("type", "")
+                        price = item.get("price", 0)
+                        # 提取油价类型，如"92#汽油"、"95#汽油"等
+                        if "92#" in oil_type:
+                            oil_prices["92"] = price
+                        elif "95#" in oil_type:
+                            oil_prices["95"] = price
+                        elif "98#" in oil_type:
+                            oil_prices["98"] = price
+                        elif "0#" in oil_type:
+                            oil_prices["0"] = price
+                    
+                    # 构造响应消息
+                    response = f"查询成功！地区[{city_name}]\n"
+                    response += f"趋势：前{qushi}\n"
+                    response += f"92号汽油：{oil_prices.get('92', '未知')}元/升\n"
+                    response += f"95号汽油：{oil_prices.get('95', '未知')}元/升\n"
+                    response += f"98号汽油：{oil_prices.get('98', '未知')}元/升\n"
+                    response += f"0号柴油：{oil_prices.get('0', '未知')}元/升"
+                    
+                    yield message.plain_result(response).use_t2i(False)
+                    return
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            yield message.plain_result(f"无法连接到油价查询服务器：{str(e)}").use_t2i(False)
+            return
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            yield message.plain_result("请求超时，请稍后重试，服务器响应较慢").use_t2i(False)
+            return
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON解析错误：{e}")
+            yield message.plain_result(f"服务器返回数据格式错误：{str(e)}").use_t2i(False)
+            return
+        except Exception as e:
+            logger.error(f"请求油价查询时发生错误：{e}")
+            yield message.plain_result(f"请求油价查询时发生错误：{str(e)}").use_t2i(False)
+            return
+
+    @filter.command("qq估价")
+    async def qq_valuation(self, message: AstrMessageEvent):
+        """查询指定QQ号的估价信息"""
+        # 提取QQ号参数
+        msg = message.message_str.replace("qq估价", "").strip()
+        
+        if not msg:
+            yield message.plain_result("正确指令：qq估价 <QQ号>\n\n示例：qq估价 123456").use_t2i(False)
+            return
+        
+        qq_number = msg.strip()
+        api_url = "https://free.wqwlkj.cn/wqwlapi/qq_gj.php"
+        
+        try:
+            # 构造请求参数
+            params = {
+                "qq": qq_number,
+                "type": "json"
+            }
+            
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(api_url, params=params) as resp:
+                    if resp.status != 200:
+                        yield message.plain_result("请求QQ估价失败，服务器返回错误状态码").use_t2i(False)
+                        return
+                    
+                    # 先读取响应文本，再使用json.loads()解析，解决Content-Type问题
+                    raw_content = await resp.text()
+                    result = json.loads(raw_content)
+                    
+                    if result.get("code") != 1:
+                        yield message.plain_result(f"查询失败：{result.get('msg', '未知错误')}").use_t2i(False)
+                        return
+                    
+                    # 格式化输出结果
+                    response = f"成功估价【{result.get('qq', qq_number)}】\n"
+                    response += f"评估：{result.get('valuation', 0)}元\n"
+                    response += f"特点：{result.get('law', '')}\n"
+                    response += f"数字：{result.get('digit', '')}"
+                    
+                    yield message.plain_result(response).use_t2i(False)
+                    return
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            yield message.plain_result("无法连接到QQ估价服务器，请稍后重试或检查网络连接").use_t2i(False)
+            return
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            yield message.plain_result("请求超时，请稍后重试").use_t2i(False)
+            return
+        except json.JSONDecodeError:
+            logger.error("JSON解析错误")
+            yield message.plain_result("服务器返回数据格式错误").use_t2i(False)
+            return
+        except Exception as e:
+            logger.error(f"请求QQ估价时发生错误：{e}")
+            yield message.plain_result(f"请求QQ估价时发生错误：{str(e)}").use_t2i(False)
+            return
+
+    @filter.command("星座运势")
+    async def constellation_fortune(self, message: AstrMessageEvent):
+        """查询指定星座的运势图片"""
+        # 提取星座名称参数
+        msg = message.message_str.replace("星座运势", "").strip()
+        
+        if not msg:
+            yield message.plain_result("正确指令：星座运势 <星座名>\n\n示例：星座运势 白羊\n星座运势 白羊座").use_t2i(False)
+            return
+        
+        constellation = msg.strip()
+        api_url = "https://api.xcvts.cn/api/hotlist/xzys"
+        
+        try:
+            # 构造请求参数
+            params = {
+                "msg": constellation
+            }
+            
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(api_url, params=params) as resp:
+                    if resp.status != 200:
+                        yield message.plain_result(f"请求星座运势失败，服务器返回错误状态码：{resp.status}").use_t2i(False)
+                        return
+                    
+                    # 检查响应是否为图片
+                    content_type = resp.headers.get("content-type", "")
+                    if not content_type.startswith("image/"):
+                        # 读取响应内容，查看是否为错误信息
+                        error_content = await resp.text()
+                        yield message.plain_result(f"获取星座运势图片失败：{error_content}").use_t2i(False)
+                        return
+                    
+                    # 下载图片到本地
+                    import uuid
+                    import os
+                    from astrbot.api.message_components import Image
+                    
+                    # 创建存储目录
+                    save_dir = f"data/{self.PLUGIN_NAME}_images"
+                    if not os.path.exists(save_dir):
+                        os.makedirs(save_dir)
+                    
+                    # 生成唯一文件名，使用.png后缀因为API返回的是图片
+                    file_name = f"{uuid.uuid4().hex}.png"
+                    file_path = os.path.join(save_dir, file_name)
+                    
+                    # 下载图片
+                    with open(file_path, "wb") as f:
+                        f.write(await resp.read())
+                    
+                    # 使用本地文件路径发送图片
+                    yield message.chain_result([Image.fromFileSystem(file_path)]).use_t2i(False)
+                    return
+                        
+        except aiohttp.ClientError as e:
+            logger.error(f"网络连接错误：{e}")
+            yield message.plain_result(f"无法连接到星座运势服务器：{str(e)}").use_t2i(False)
+            return
+        except asyncio.TimeoutError:
+            logger.error("请求超时")
+            yield message.plain_result("请求超时，请稍后重试").use_t2i(False)
+            return
+        except Exception as e:
+            logger.error(f"请求星座运势时发生错误：{e}")
+            yield message.plain_result(f"请求星座运势时发生错误：{str(e)}").use_t2i(False)
+            return
+
+    @filter.command("工具箱菜单")
+    async def toolbox_menu(self, message: AstrMessageEvent):
+        """显示工具箱插件的所有可用命令"""
+        menu_text = """🔧 工具箱插件菜单 🔧
+
+【日常功能】
+📅 早安 / 晚安 - 记录睡眠时间，计算睡眠时长
+
+【游戏相关】
+🎮 战力查询 <英雄名> - 查询王者荣耀英雄战力
+🌍 mc服务器 <服务器地址> - 查询Minecraft服务器状态
+
+【生活服务】
+🗺️ 路线查询 <出发地> <目的地> - 查询城际路线
+⛽ 油价查询 <城市名> - 查询指定城市油价
+💰 qq估价 <QQ号> - 查询QQ号估价
+
+【AI功能】
+🎨 绘画 <提示词> - AI绘画生成
+
+【网络工具】
+🌐 代理ip - 获取socks5代理IP
+
+【娱乐功能】
+✨ 星座运势 <星座名> - 查询星座运势图片
+
+📌 使用示例：
+战力查询 小乔
+路线查询 广州 深圳
+绘画 一只可爱的猫
+
+💡 所有命令支持群聊和私聊使用"""
+        
+        # 使用自定义的菜单样式图片生成方法
+        image_url = await self.text_to_image_menu_style(menu_text)
+        
+        yield message.image_result(image_url).use_t2i(False)
+
+    async def terminate(self):
+        """插件卸载/重载时调用"""
+        pass
