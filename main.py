@@ -9,7 +9,7 @@ import astrbot.api.event.filter as filter
 from astrbot.api.star import register, Star
 from astrbot.api.message_components import Image as MsgImage, Reply
 
-# 定义解题助手HTML模板
+# 定义解题助手HTML模板（基于用户自定义模板）
 SOLUTION_TEMPLATE = '''
 <!DOCTYPE html>
 <html>
@@ -18,7 +18,7 @@ SOLUTION_TEMPLATE = '''
     <style>
         body {
             margin: 0;
-            padding: 30px;
+            padding: 40px;
             background: #ffffff;
             font-family: 'Helvetica Neue', Arial, sans-serif;
         }
@@ -27,117 +27,103 @@ SOLUTION_TEMPLATE = '''
             position: relative;
             width: 600px;  /* 调整宽度 */
             margin: 0 auto;
+            min-height: 400px;
         }
         
-        .grid-background {
+        .grid {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            min-height: 100%;
+            height: 100%;
             background-image: 
                 linear-gradient(to right, #e0e0e0 1px, transparent 1px),
                 linear-gradient(to bottom, #e0e0e0 1px, transparent 1px);
-            background-size: 25px 25px;
-            opacity: 0.2;
-            z-index: 0;
+            background-size: 20px 20px;
+            opacity: 0.3;
         }
         
-        .main-border {
+        .border {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            min-height: 100%;
+            height: 100%;
             border: 2px solid #000000;
-            z-index: 1;
         }
         
         .corner {
             position: absolute;
-            width: 16px;
-            height: 16px;
+            width: 20px;
+            height: 20px;
             border: 2px solid #000000;
-            z-index: 2;
         }
         
         .corner-tl {
-            top: -8px;
-            left: -8px;
+            top: -10px;
+            left: -10px;
             border-right: none;
             border-bottom: none;
         }
         
         .corner-tr {
-            top: -8px;
-            right: -8px;
+            top: -10px;
+            right: -10px;
             border-left: none;
             border-bottom: none;
         }
         
         .corner-bl {
-            bottom: -8px;
-            left: -8px;
+            bottom: -10px;
+            left: -10px;
             border-right: none;
             border-top: none;
         }
         
         .corner-br {
-            bottom: -8px;
-            right: -8px;
+            bottom: -10px;
+            right: -10px;
             border-left: none;
             border-top: none;
         }
         
-        .solution-content {
+        /* 新增内容样式 */
+        .content {
             position: relative;
-            z-index: 3;
-            padding: 40px 30px;
+            z-index: 10;
+            padding: 40px;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #000000;
         }
         
         .section {
             margin-bottom: 30px;
         }
         
-        .section-title {
-            font-size: 24px;
+        .section-header {
+            font-size: 20px;
             font-weight: bold;
-            color: #000000;
             margin-bottom: 15px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #000000;
+            color: #000000;
+            border-bottom: 1px solid #000000;
+            padding-bottom: 5px;
         }
         
-        .section-content {
+        .section-text {
             font-size: 16px;
             line-height: 1.8;
             color: #333333;
         }
         
-        .question {
-            background-color: #f5f5f5;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-        }
-        
-        .thinking {
-            background-color: #e8f4f8;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-        }
-        
-        .answer {
-            background-color: #f0f8f0;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-        }
-        
         .time {
             font-size: 12px;
-            color: #999999;
+            color: #666666;
             text-align: right;
             margin-top: 20px;
         }
@@ -145,38 +131,32 @@ SOLUTION_TEMPLATE = '''
 </head>
 <body>
     <div class="container">
-        <div class="grid-background"></div>
-        <div class="main-border"></div>
+        <div class="grid"></div>
+        <div class="border"></div>
         <div class="corner corner-tl"></div>
         <div class="corner corner-tr"></div>
         <div class="corner corner-bl"></div>
         <div class="corner corner-br"></div>
         
-        <div class="solution-content">
+        <div class="content">
+            <div class="title">解题助手</div>
+            
             <div class="section">
-                <div class="section-title">题目</div>
-                <div class="section-content question">
-                    {{ question }}
-                </div>
+                <div class="section-header">题目</div>
+                <div class="section-text">{{ question }}</div>
             </div>
             
             <div class="section">
-                <div class="section-title">思考过程</div>
-                <div class="section-content thinking">
-                    {{ thinking }}
-                </div>
+                <div class="section-header">思考过程</div>
+                <div class="section-text">{{ thinking }}</div>
             </div>
             
             <div class="section">
-                <div class="section-title">答案</div>
-                <div class="section-content answer">
-                    {{ answer }}
-                </div>
+                <div class="section-header">答案</div>
+                <div class="section-text">{{ answer }}</div>
             </div>
             
-            <div class="time">
-                {{ time }}
-            </div>
+            <div class="time">{{ time }}</div>
         </div>
     </div>
 </body>
@@ -1241,27 +1221,35 @@ class Main(Star):
                         # 先返回一个处理中的提示
                         yield CommandResult().message("正在生成图片，请稍候...")
                         
-                        # 使用自定义HTML模板生成图片
-                        render_data = {
-                            "question": question,
-                            "thinking": thinking,
-                            "answer": answer_content,
-                            "time": created_at
-                        }
-                        
-                        # 截图选项
-                        options = {
-                            "full_page": True,  # 让高度自适应内容
-                            "type": "png",
-                            "quality": 95,
-                            "omit_background": False,
-                            "animations": "disabled",
-                            "caret": "hide"
-                        }
-                        
-                        # 使用html_render生成图片
-                        image_url = await self.html_render(SOLUTION_TEMPLATE, render_data, options=options)
-                        yield message.image_result(image_url)
+                        # 优先使用自定义HTML模板生成图片
+                        try:
+                            # 使用自定义HTML模板生成图片
+                            render_data = {
+                                "question": question,
+                                "thinking": thinking,
+                                "answer": answer_content,
+                                "time": created_at
+                            }
+                            
+                            # 截图选项
+                            options = {
+                                "full_page": True,  # 让高度自适应内容
+                                "type": "png",
+                                "quality": 95,
+                                "omit_background": False,
+                                "animations": "disabled",
+                                "caret": "hide"
+                            }
+                            
+                            # 使用html_render生成图片
+                            image_url = await self.html_render(SOLUTION_TEMPLATE, render_data, options=options)
+                            yield message.image_result(image_url)
+                        except Exception as html_error:
+                            logger.warning(f"HTML渲染失败，尝试使用基本方式生成图片：{html_error}")
+                            # HTML渲染失败，回退到基本方式
+                            formatted_content = f"题目：\n{question}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
+                            image_url = await self.text_to_image(formatted_content)
+                            yield message.image_result(image_url)
                     except Exception as img_error:
                         logger.error(f"生成图片失败：{img_error}")
                         # 详细记录错误信息
