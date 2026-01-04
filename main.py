@@ -9,160 +9,6 @@ import astrbot.api.event.filter as filter
 from astrbot.api.star import register, Star
 from astrbot.api.message_components import Image as MsgImage, Reply
 
-# 定义解题助手HTML模板（基于用户自定义模板）
-SOLUTION_TEMPLATE = '''
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body {
-            margin: 0;
-            padding: 40px;
-            background: #ffffff;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-        }
-        
-        .container {
-            position: relative;
-            width: 600px;  /* 调整宽度 */
-            margin: 0 auto;
-            min-height: 400px;
-        }
-        
-        .grid {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                linear-gradient(to right, #e0e0e0 1px, transparent 1px),
-                linear-gradient(to bottom, #e0e0e0 1px, transparent 1px);
-            background-size: 20px 20px;
-            opacity: 0.3;
-        }
-        
-        .border {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 2px solid #000000;
-        }
-        
-        .corner {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #000000;
-        }
-        
-        .corner-tl {
-            top: -10px;
-            left: -10px;
-            border-right: none;
-            border-bottom: none;
-        }
-        
-        .corner-tr {
-            top: -10px;
-            right: -10px;
-            border-left: none;
-            border-bottom: none;
-        }
-        
-        .corner-bl {
-            bottom: -10px;
-            left: -10px;
-            border-right: none;
-            border-top: none;
-        }
-        
-        .corner-br {
-            bottom: -10px;
-            right: -10px;
-            border-left: none;
-            border-top: none;
-        }
-        
-        /* 新增内容样式 */
-        .content {
-            position: relative;
-            z-index: 10;
-            padding: 40px;
-        }
-        
-        .title {
-            font-size: 24px;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 30px;
-            color: #000000;
-        }
-        
-        .section {
-            margin-bottom: 30px;
-        }
-        
-        .section-header {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #000000;
-            border-bottom: 1px solid #000000;
-            padding-bottom: 5px;
-        }
-        
-        .section-text {
-            font-size: 16px;
-            line-height: 1.8;
-            color: #333333;
-        }
-        
-        .time {
-            font-size: 12px;
-            color: #666666;
-            text-align: right;
-            margin-top: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="grid"></div>
-        <div class="border"></div>
-        <div class="corner corner-tl"></div>
-        <div class="corner corner-tr"></div>
-        <div class="corner corner-bl"></div>
-        <div class="corner corner-br"></div>
-        
-        <div class="content">
-            <div class="title">解题助手</div>
-            
-            <div class="section">
-                <div class="section-header">题目</div>
-                <div class="section-text">{{ question }}</div>
-            </div>
-            
-            <div class="section">
-                <div class="section-header">思考过程</div>
-                <div class="section-text">{{ thinking }}</div>
-            </div>
-            
-            <div class="section">
-                <div class="section-header">答案</div>
-                <div class="section-text">{{ answer }}</div>
-            </div>
-            
-            <div class="time">{{ time }}</div>
-        </div>
-    </div>
-</body>
-</html>
-'''
-
 logger = logging.getLogger("astrbot")
 
 
@@ -1097,46 +943,21 @@ class Main(Star):
                             thinking = ""  # 没有思考过程
                             answer_content = answer.strip()
                         
+                        # 5. 格式化内容
+                        formatted_content = f"题目：\n{question_text}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
+                        
                         # 6. 生成图片
                         try:
                             # 返回处理中的提示
                             yield CommandResult().message("正在生成图片，请稍候...")
                             
-                            # 优先使用自定义HTML模板生成图片
-                            try:
-                                # 使用自定义HTML模板生成图片
-                                render_data = {
-                                    "question": question_text,
-                                    "thinking": thinking,
-                                    "answer": answer_content,
-                                    "time": created_at
-                                }
-                                
-                                # 截图选项
-                                options = {
-                                    "full_page": True,  # 让高度自适应内容
-                                    "type": "png",
-                                    "quality": 95,
-                                    "omit_background": False,
-                                    "animations": "disabled",
-                                    "caret": "hide"
-                                }
-                                
-                                # 使用html_render生成图片
-                                image_url = await self.html_render(SOLUTION_TEMPLATE, render_data, options=options)
-                                yield event.image_result(image_url)
-                            except Exception as html_error:
-                                logger.warning(f"HTML渲染失败，尝试使用基本方式生成图片：{html_error}")
-                                # HTML渲染失败，回退到基本方式
-                                formatted_content = f"题目：\n{question_text}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
-                                image_url = await self.text_to_image(formatted_content)
-                                yield event.image_result(image_url)
+                            image_url = await self.text_to_image_menu_style(formatted_content)
+                            yield event.image_result(image_url)
                         except Exception as img_error:
                             logger.error(f"生成图片失败：{img_error}")
                             # 详细记录错误信息
                             logger.exception("生成图片时发生异常")
                             # 如果生成图片失败，直接返回文本格式
-                            formatted_content = f"题目：\n{question_text}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
                             yield CommandResult().message(f"图片生成失败，以下是文本答案：\n\n{formatted_content}")
                 except asyncio.TimeoutError:
                     yield CommandResult().error("解题助手请求超时，服务器响应过慢\n\n建议：\n1. 检查网络连接\n2. 稍后重试")
@@ -1150,6 +971,81 @@ class Main(Star):
             logger.exception("图片解题异常详情")
             # 增加更友好的错误提示
             yield CommandResult().error(f"图片解题失败：{str(e)}\n\n可能的原因：\n1. 图片链接不可访问\n2. 图片中没有可识别的文字\n3. 网络连接问题\n4. 服务器暂时不可用\n\n请检查图片是否清晰可辨，或稍后重试")
+    
+    # 菜单样式的HTML模板
+    MENU_TEMPLATE = '''
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>解题助手</title>
+        <style>
+            body {
+                font-family: 'Microsoft YaHei', Arial, sans-serif;
+                background-color: #f5f5f5;
+                margin: 0;
+                padding: 20px;
+                line-height: 1.6;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                background-color: white;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            .content {
+                white-space: pre-wrap;
+                font-size: 16px;
+                color: #333;
+                font-weight: normal;
+                text-align: left;
+            }
+            .title {
+                font-size: 20px;
+                font-weight: bold;
+                color: #333;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #e0e0e0;
+                padding-bottom: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="content">{{content}}</div>
+        </div>
+    </body>
+    </html>
+    '''
+    
+    async def text_to_image_menu_style(self, text: str) -> str:
+        """使用菜单样式的HTML模板生成图片"""
+        try:
+            # 渲染HTML模板
+            html_content = self.MENU_TEMPLATE.replace("{{content}}", text)
+            
+            # 使用html_render函数生成图片
+            options = {
+                "full_page": True,
+                "type": "jpeg",
+                "quality": 95,
+            }
+            
+            image_url = await self.html_render(
+                html_content,  # 渲染后的HTML内容
+                {},  # 空数据字典
+                True,  # 返回URL
+                options  # 图片生成选项
+            )
+            
+            return image_url
+        except Exception as e:
+            logger.error(f"菜单样式图片生成失败：{e}")
+            # 回退到默认的text_to_image方法
+            return await self.text_to_image(text)
     
     @filter.command("解题助手")
     async def jie_ti_zhu_shou(self, message: AstrMessageEvent):
@@ -1224,46 +1120,21 @@ class Main(Star):
                         thinking = ""  # 没有思考过程
                         answer_content = answer.strip()
                     
+                    # 4. 格式化内容
+                    formatted_content = f"题目：\n{question}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
+                    
                     # 5. 生成图片
                     try:
                         # 先返回一个处理中的提示
                         yield CommandResult().message("正在生成图片，请稍候...")
                         
-                        # 优先使用自定义HTML模板生成图片
-                        try:
-                            # 使用自定义HTML模板生成图片
-                            render_data = {
-                                "question": question,
-                                "thinking": thinking,
-                                "answer": answer_content,
-                                "time": created_at
-                            }
-                            
-                            # 截图选项
-                            options = {
-                                "full_page": True,  # 让高度自适应内容
-                                "type": "png",
-                                "quality": 95,
-                                "omit_background": False,
-                                "animations": "disabled",
-                                "caret": "hide"
-                            }
-                            
-                            # 使用html_render生成图片
-                            image_url = await self.html_render(SOLUTION_TEMPLATE, render_data, options=options)
-                            yield message.image_result(image_url)
-                        except Exception as html_error:
-                            logger.warning(f"HTML渲染失败，尝试使用基本方式生成图片：{html_error}")
-                            # HTML渲染失败，回退到基本方式
-                            formatted_content = f"题目：\n{question}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
-                            image_url = await self.text_to_image(formatted_content)
-                            yield message.image_result(image_url)
+                        image_url = await self.text_to_image_menu_style(formatted_content)
+                        yield message.image_result(image_url)
                     except Exception as img_error:
                         logger.error(f"生成图片失败：{img_error}")
                         # 详细记录错误信息
                         logger.exception("生成图片时发生异常")
                         # 如果生成图片失败，直接返回文本格式
-                        formatted_content = f"题目：\n{question}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
                         yield CommandResult().message(f"图片生成失败，以下是文本答案：\n\n{formatted_content}")
                         
         except aiohttp.ClientError as e:
