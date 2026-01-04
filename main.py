@@ -1134,30 +1134,28 @@ class Main(Star):
                     # 解析模型条目
                     model_part, desc_part = line.split(' - ', 1)
                     
-                    # 检测是否包含示例格式
-                    if '<提问内容>' in model_part or '<6位数字>' in model_part:
-                        # 这是一个模型命令格式
-                        model_format = model_part.strip()
-                        model_desc = desc_part.strip()
-                        
-                        # 提取模型名称
-                        if ' ' in model_format:
-                            model_name = model_format.split(' ')[0]
-                        else:
-                            model_name = model_format
-                        
-                        # 生成示例
-                        example = model_format.replace('<提问内容>', '1+1').replace('<6位数字>', '123456')
-                        
-                        # 生成HTML
-                        html_parts.append(f'<div class="model-item">')
-                        html_parts.append(f'<span class="model-name">{model_name}</span> ')
-                        html_parts.append(f'<span class="model-format">{model_format}</span> ')
-                        html_parts.append(f'<span class="separator">---------------</span> ')
-                        html_parts.append(f'<span class="example">示例：{example}（注意有空格）</span> ')
-                        html_parts.append(f'<span class="separator">----------</span> ')
-                        html_parts.append(f'<span class="model-desc">{model_desc}</span>')
-                        html_parts.append(f'</div>')
+                    # 这是一个模型命令格式
+                    model_format = model_part.strip()
+                    model_desc = desc_part.strip()
+                    
+                    # 提取模型名称
+                    if ' ' in model_format:
+                        model_name = model_format.split(' ')[0]
+                    else:
+                        model_name = model_format
+                    
+                    # 生成示例
+                    example = model_format.replace('<提问内容>', '1+1').replace('<6位数字>', '123456').replace('<图片>', '[图片]')
+                    
+                    # 生成HTML
+                    html_parts.append(f'<div class="model-item">')
+                    html_parts.append(f'<span class="model-name">{model_name}</span> ')
+                    html_parts.append(f'<span class="model-format">{model_format}</span> ')
+                    html_parts.append(f'<span class="separator">---------------</span> ')
+                    html_parts.append(f'<span class="example">示例：{example}（注意有空格）</span> ')
+                    html_parts.append(f'<span class="separator">----------</span> ')
+                    html_parts.append(f'<span class="model-desc">{model_desc}</span>')
+                    html_parts.append(f'</div>')
                 
                 # 处理空行
                 elif line.strip() == '':
@@ -1175,9 +1173,12 @@ class Main(Star):
             
             # 使用html_render函数生成图片
             options = {
-                "full_page": True,
+                "full_page": True,  # 确保生成完整页面
                 "type": "jpeg",
                 "quality": 95,
+                "width": 1000,  # 设置合适的宽度
+                "height": 0,  # 高度自动适应内容
+                "scale": 1.0  # 缩放比例
             }
             
             image_url = await self.html_render(
