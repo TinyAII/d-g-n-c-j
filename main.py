@@ -1102,27 +1102,35 @@ class Main(Star):
                             # 返回处理中的提示
                             yield CommandResult().message("正在生成图片，请稍候...")
                             
-                            # 使用自定义HTML模板生成图片
-                            render_data = {
-                                "question": question_text,
-                                "thinking": thinking,
-                                "answer": answer_content,
-                                "time": created_at
-                            }
-                            
-                            # 截图选项
-                            options = {
-                                "full_page": True,  # 让高度自适应内容
-                                "type": "png",
-                                "quality": 95,
-                                "omit_background": False,
-                                "animations": "disabled",
-                                "caret": "hide"
-                            }
-                            
-                            # 使用html_render生成图片
-                            image_url = await self.html_render(SOLUTION_TEMPLATE, render_data, options=options)
-                            yield event.image_result(image_url)
+                            # 优先使用自定义HTML模板生成图片
+                            try:
+                                # 使用自定义HTML模板生成图片
+                                render_data = {
+                                    "question": question_text,
+                                    "thinking": thinking,
+                                    "answer": answer_content,
+                                    "time": created_at
+                                }
+                                
+                                # 截图选项
+                                options = {
+                                    "full_page": True,  # 让高度自适应内容
+                                    "type": "png",
+                                    "quality": 95,
+                                    "omit_background": False,
+                                    "animations": "disabled",
+                                    "caret": "hide"
+                                }
+                                
+                                # 使用html_render生成图片
+                                image_url = await self.html_render(SOLUTION_TEMPLATE, render_data, options=options)
+                                yield event.image_result(image_url)
+                            except Exception as html_error:
+                                logger.warning(f"HTML渲染失败，尝试使用基本方式生成图片：{html_error}")
+                                # HTML渲染失败，回退到基本方式
+                                formatted_content = f"题目：\n{question_text}\n\n思考过程：\n{thinking}\n\n答案：\n{answer_content}\n\n时间：\n{created_at}"
+                                image_url = await self.text_to_image(formatted_content)
+                                yield event.image_result(image_url)
                         except Exception as img_error:
                             logger.error(f"生成图片失败：{img_error}")
                             # 详细记录错误信息
