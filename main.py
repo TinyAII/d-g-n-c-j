@@ -29,9 +29,12 @@ class Main(Star):
         
         question = msg.strip()
         
+        # 添加提示词
+        prompt = f"{question}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/yuanbao.php"
         params = {
-            "question": question
+            "question": prompt
         }
         
         try:
@@ -65,9 +68,12 @@ class Main(Star):
         
         question = msg.strip()
         
+        # 添加提示词
+        prompt = f"{question}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/depsek3.2.php"
         params = {
-            "question": question
+            "question": prompt
         }
         
         try:
@@ -101,9 +107,12 @@ class Main(Star):
         
         question = msg.strip()
         
+        # 添加提示词
+        prompt = f"{question}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/depsek3.1.php"
         params = {
-            "question": question
+            "question": prompt
         }
         
         try:
@@ -147,9 +156,12 @@ class Main(Star):
         if not uid.isdigit() or len(uid) != 6:
             return CommandResult().error("记忆数必须是6位数字\n\n正确格式：gpt5 <记忆数> <提问内容>\n\n示例：gpt5 123456 你好")
         
+        # 添加提示词
+        prompt = f"{question}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/gpt5-nano/index.php"
         params = {
-            "question": question,
+            "question": prompt,
             "uid": uid
         }
         
@@ -194,9 +206,12 @@ class Main(Star):
         if not uid.isdigit() or len(uid) != 6:
             return CommandResult().error("记忆数必须是6位数字\n\n正确格式：克劳德 <记忆数> <提问内容>\n\n示例：克劳德 123456 你好")
         
+        # 添加提示词
+        prompt = f"{question}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/hiku-4.5/index.php"
         params = {
-            "question": question,
+            "question": prompt,
             "uid": uid
         }
         
@@ -221,29 +236,32 @@ class Main(Star):
             logger.error(f"请求Claude4.5-hiku助手时发生错误：{e}")
             return CommandResult().error(f"请求Claude4.5-hiku助手时发生错误：{str(e)}")
 
-    @filter.command("通义千问")
+    @filter.command("千问")
     async def qwen3_coder(self, message: AstrMessageEvent):
         """通义千问助手，支持记忆功能"""
-        msg = message.message_str.replace("通义千问", "").strip()
+        msg = message.message_str.replace("千问", "").strip()
         
         if not msg:
-            return CommandResult().error("正确指令：通义千问 <记忆数> <提问内容>\n\n示例：通义千问 123456 你好")
+            return CommandResult().error("正确指令：千问 <记忆数> <提问内容>\n\n示例：千问 123456 你好")
         
         # 分割输入，提取记忆数和问题
         parts = msg.split(" ", 1)
         if len(parts) != 2:
-            return CommandResult().error("正确格式：通义千问 <记忆数> <提问内容>\n\n示例：通义千问 123456 你好")
+            return CommandResult().error("正确格式：千问 <记忆数> <提问内容>\n\n示例：千问 123456 你好")
         
         uid = parts[0].strip()
         question = parts[1].strip()
         
         # 验证记忆数是否为6位数字
         if not uid.isdigit() or len(uid) != 6:
-            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：通义千问 <记忆数> <提问内容>\n\n示例：通义千问 123456 你好")
+            return CommandResult().error("记忆数必须是6位数字\n\n正确格式：千问 <记忆数> <提问内容>\n\n示例：千问 123456 你好")
+        
+        # 添加违禁词提示
+        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
         
         api_url = "https://api.jkyai.top/API/qwen3-coder/index.php"
         params = {
-            "question": question,
+            "question": question_with_prompt,
             "uid": uid
         }
         
@@ -278,9 +296,12 @@ class Main(Star):
         
         question = msg.strip()
         
+        # 添加违禁词提示
+        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/deepseek.php"
         params = {
-            "question": question
+            "question": question_with_prompt
         }
         
         try:
@@ -315,9 +336,12 @@ class Main(Star):
         
         question = msg.strip()
         
+        # 添加违禁词提示
+        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/glm4.6.php"
         params = {
-            "question": question
+            "question": question_with_prompt
         }
         
         try:
@@ -351,9 +375,12 @@ class Main(Star):
         
         content = msg.strip()
         
+        # 添加违禁词提示
+        content_with_prompt = f"{content} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/kkaimx.php"
         params = {
-            "content": content
+            "content": content_with_prompt
         }
         
         try:
@@ -387,9 +414,12 @@ class Main(Star):
         
         question = msg.strip()
         
+        # 添加违禁词提示
+        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/ling-1t.php"
         params = {
-            "question": question
+            "question": question_with_prompt
         }
         
         try:
@@ -423,9 +453,12 @@ class Main(Star):
         
         question = msg.strip()
         
+        # 添加违禁词提示
+        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/doubao.php"
         params = {
-            "question": question
+            "question": question_with_prompt
         }
         
         try:
@@ -469,9 +502,12 @@ class Main(Star):
         if not uid.isdigit() or len(uid) != 6:
             return CommandResult().error("记忆数必须是6位数字\n\n正确格式：gpt <记忆数> <提问内容>\n\n示例：gpt 123456 你好")
         
+        # 添加违禁词提示
+        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/chatgpt-oss/index.php"
         params = {
-            "question": question,
+            "question": question_with_prompt,
             "uid": uid
         }
         
@@ -516,9 +552,12 @@ class Main(Star):
         if not uid.isdigit() or len(uid) != 6:
             return CommandResult().error("记忆数必须是6位数字\n\n正确格式：谷歌 <记忆数> <提问内容>\n\n示例：谷歌 123456 你好")
         
+        # 添加违禁词提示
+        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/gemini2.5/index.php"
         params = {
-            "question": question,
+            "question": question_with_prompt,
             "uid": uid
         }
         
@@ -553,9 +592,12 @@ class Main(Star):
         
         question = msg.strip()
         
+        # 添加违禁词提示
+        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/qwen3.php"
         params = {
-            "question": question
+            "question": question_with_prompt
         }
         
         try:
@@ -589,9 +631,12 @@ class Main(Star):
         
         content = msg.strip()
         
+        # 添加违禁词提示
+        content_with_prompt = f"{content} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/xfxhx1.php"
         params = {
-            "content": content
+            "content": content_with_prompt
         }
         
         try:
@@ -636,9 +681,12 @@ class Main(Star):
         if not uid.isdigit() or len(uid) != 6:
             return CommandResult().error("记忆数必须是6位数字\n\n正确格式：小米 <记忆数> <提问内容>\n\n示例：小米 123456 你好")
         
+        # 添加违禁词提示
+        question_with_prompt = f"{question} 注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。"
+        
         api_url = "https://api.jkyai.top/API/xiaomi/index.php"
         params = {
-            "question": question,
+            "question": question_with_prompt,
             "uid": uid
         }
         
@@ -987,36 +1035,68 @@ class Main(Star):
                 background-color: #f5f5f5;
                 margin: 0;
                 padding: 20px;
-                line-height: 1.6;
+                line-height: 1.8;
             }
             .container {
-                max-width: 800px;
+                max-width: 850px;
                 margin: 0 auto;
                 background-color: white;
-                padding: 30px;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                padding: 40px;
+                border-radius: 12px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.15);
             }
             .content {
                 white-space: pre-wrap;
-                font-size: 16px;
+                font-size: 18px;
                 color: #333;
-                font-weight: normal;
                 text-align: left;
             }
-            .title {
-                font-size: 20px;
+            .section-title {
+                font-size: 22px;
                 font-weight: bold;
-                color: #333;
-                margin-bottom: 20px;
-                border-bottom: 2px solid #e0e0e0;
-                padding-bottom: 10px;
+                color: #28a745;
+                margin: 20px 0 10px 0;
+                padding: 8px 0;
+                border-bottom: 2px solid #e8f5e8;
+            }
+            .content-line {
+                margin: 5px 0;
+            }
+            .question-section {
+                margin-bottom: 30px;
+            }
+            .thinking-section {
+                margin-bottom: 30px;
+                background-color: #f8f9fa;
+                padding: 20px;
+                border-radius: 8px;
+                border-left: 4px solid #17a2b8;
+            }
+            .answer-section {
+                margin-bottom: 30px;
+                background-color: #fff3cd;
+                padding: 20px;
+                border-radius: 8px;
+                border-left: 4px solid #ffc107;
+            }
+            .time-section {
+                color: #6c757d;
+                font-style: italic;
+                font-size: 16px;
+                text-align: right;
+            }
+            .highlight {
+                color: #dc3545;
+                font-weight: bold;
             }
         </style>
     </head>
     <body>
         <div class="container">
-            <div class="content">{{content}}</div>
+            <div class="content">
+                <!-- 使用CSS选择器根据内容自动应用样式 -->
+                {{content}}
+            </div>
         </div>
     </body>
     </html>
@@ -1025,8 +1105,56 @@ class Main(Star):
     async def text_to_image_menu_style(self, text: str) -> str:
         """使用菜单样式的HTML模板生成图片"""
         try:
+            # 将文本内容转换为结构化HTML
+            lines = text.split('\n')
+            html_parts = []
+            current_section = ""
+            
+            for line in lines:
+                line = line.rstrip()
+                
+                # 检测标题行
+                if line.startswith('题目：'):
+                    current_section = "question"
+                    html_parts.append('<div class="section-title">题目：</div>')
+                    continue
+                elif line.startswith('思考过程：'):
+                    current_section = "thinking"
+                    html_parts.append('<div class="section-title">思考过程：</div>')
+                    html_parts.append('<div class="thinking-section">')
+                    continue
+                elif line.startswith('答案：'):
+                    current_section = "answer"
+                    html_parts.append('<div class="section-title">答案：</div>')
+                    html_parts.append('<div class="answer-section">')
+                    continue
+                elif line.startswith('时间：'):
+                    current_section = "time"
+                    html_parts.append('<div class="section-title">时间：</div>')
+                    continue
+                
+                # 处理内容行
+                if line.strip():
+                    html_parts.append(f'<div class="content-line">{line}</div>')
+                else:
+                    # 处理空行，结束当前区块
+                    if current_section == "thinking":
+                        html_parts.append('</div>')
+                    elif current_section == "answer":
+                        html_parts.append('</div>')
+                    current_section = ""
+            
+            # 确保所有区块都关闭
+            if current_section == "thinking":
+                html_parts.append('</div>')
+            elif current_section == "answer":
+                html_parts.append('</div>')
+            
+            # 组装最终HTML内容
+            formatted_html = '\n'.join(html_parts)
+            
             # 渲染HTML模板
-            html_content = self.MENU_TEMPLATE.replace("{{content}}", text)
+            html_content = self.MENU_TEMPLATE.replace("{{content}}", formatted_html)
             
             # 使用html_render函数生成图片
             options = {
