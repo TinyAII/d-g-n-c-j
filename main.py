@@ -1323,7 +1323,7 @@ class Main(Star):
         yield CommandResult().message("📷 请发送要识别的图片（30秒内有效）")
     
     @filter.command("大模型菜单")
-    async def da_mo_xing_cai_dan(self, message: AstrMessageEvent, *args, **kwargs):
+    async def da_mo_xing_cai_dan(self, message: AstrMessageEvent):
         """大模型菜单，显示所有可用的AI助手命令"""
         try:
             # 构建菜单内容
@@ -1381,7 +1381,7 @@ class Main(Star):
             yield CommandResult().error(f"生成大模型菜单失败：{str(e)}")
     
     @filter.event_message_type(filter.EventMessageType.ALL)
-    async def on_message(self, event: AstrMessageEvent, *args, **kwargs):
+    async def on_message(self, event: AstrMessageEvent):
         """监听所有消息，处理等待中的图片请求"""
         user_id = event.get_sender_id()
         
