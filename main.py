@@ -1330,3 +1330,69 @@ class Main(Star):
         # 处理图片解题
         async for result in self.process_image_question_solving(original_event, image_url):
             await original_event.send(result)
+    
+    @filter.command("大模型菜单")
+    async def da_mo_xing_cai_dan(self, message: AstrMessageEvent):
+        """生成大模型菜单图片"""
+        try:
+            # 准备菜单内容
+            menu_content = "大模型菜单\n\n"
+            
+            # 1. 单次问答模型
+            menu_content += "一、单次问答模型\n"
+            single_qa_models = [
+                ("腾讯元宝", "腾讯元宝 <提问内容>\n  示例：腾讯元宝 1+1", "腾讯官方大模型，支持多种问答场景"),
+                ("deep3.2", "deep3.2 <提问内容>\n  示例：deep3.2 1+1", "DeepSeek 3.2大模型，支持复杂推理"),
+                ("deep3.1", "deep3.1 <提问内容>\n  示例：deep3.1 1+1", "DeepSeek 3.1大模型，平衡性能与速度"),
+                ("智谱", "智谱 <提问内容>\n  示例：智谱 1+1", "智谱GLM4.6大模型，擅长代码和推理"),
+                ("夸克", "夸克 <提问内容>\n  示例：夸克 1+1", "夸克AI大模型，提供精准回答"),
+                ("蚂蚁", "蚂蚁 <提问内容>\n  示例：蚂蚁 1+1", "蚂蚁Ling2.0-1t大模型，擅长多轮对话"),
+                ("豆包", "豆包 <提问内容>\n  示例：豆包 1+1", "字节跳动豆包AI，支持多种任务"),
+                ("阿里", "阿里 <提问内容>\n  示例：阿里 1+1", "阿里云千问Qwen3-235b大模型"),
+                ("讯飞", "讯飞 <提问内容>\n  示例：讯飞 1+1", "讯飞星火X1大模型，擅长语音和文字处理"),
+                ("deepR1", "deepR1 <提问内容>\n  示例：deepR1 1+1", "DeepSeek-R1大模型，支持长文本处理")
+            ]
+            
+            for name, usage, desc in single_qa_models:
+                menu_content += f"\n{name}\n{usage}\n  {desc}\n"
+            
+            # 2. 记忆模型
+            menu_content += "\n\n二、记忆模型（需要6位数字记忆数）\n"
+            memory_models = [
+                ("gpt5", "gpt5 <6位数字> <提问内容>\n  示例：gpt5 123456 1+1", "GPT5-nano大模型，支持记忆功能"),
+                ("克劳德", "克劳德 <6位数字> <提问内容>\n  示例：克劳德 123456 1+1", "Claude4.5-hiku大模型，支持长上下文"),
+                ("千问", "千问 <6位数字> <提问内容>\n  示例：千问 123456 1+1", "通义千问大模型，支持记忆功能"),
+                ("gpt", "gpt <6位数字> <提问内容>\n  示例：gpt 123456 1+1", "ChatGPT-oss大模型，支持记忆功能"),
+                ("谷歌", "谷歌 <6位数字> <提问内容>\n  示例：谷歌 123456 1+1", "谷歌Gemini-2.5大模型，支持记忆功能"),
+                ("小米", "小米 <6位数字> <提问内容>\n  示例：小米 123456 1+1", "小米MiMo-V2大模型，支持记忆功能")
+            ]
+            
+            for name, usage, desc in memory_models:
+                menu_content += f"\n{name}\n{usage}\n  {desc}\n"
+            
+            # 3. 联网模式
+            menu_content += "\n\n三、联网模式\n"
+            menu_content += "联网模式 <提问内容>\n"
+            menu_content += "  示例：联网模式 明天天气如何\n"
+            menu_content += "  说明：结合搜索引擎和AI进行问答，获取最新信息\n"
+            
+            # 4. 解题模型
+            menu_content += "\n\n四、解题模型\n"
+            menu_content += "解题助手 <题目内容>\n"
+            menu_content += "  示例：解题助手 1+1\n"
+            menu_content += "  说明：调用万能解题助手API进行答题，返回图片格式结果\n\n"
+            menu_content += "图片解题助手\n"
+            menu_content += "  示例：（发送图片）图片解题助手\n"
+            menu_content += "  说明：识别图片中的题目并解题，返回图片格式结果\n"
+            
+            # 生成图片
+            yield CommandResult().message("正在生成菜单图片，请稍候...")
+            
+            # 使用text_to_image生成图片
+            image_url = await self.text_to_image(menu_content)
+            yield message.image_result(image_url)
+            
+        except Exception as e:
+            logger.error(f"生成大模型菜单失败：{e}")
+            logger.exception("生成大模型菜单时发生异常")
+            yield CommandResult().error(f"生成菜单图片失败：{str(e)}")
