@@ -707,7 +707,7 @@ class Main(Star):
                             search_info.append(f"标题：{title}\n片段：{snippet}\n发布日期：{simple_time}\n")
                     
                     # 3. 构建给DeepSeek-3.2的问题
-                    combined_question = f"用户的问题是：{question}\n\n请结合以下搜索信息回答用户问题：\n{''.join(search_info)}\n\n注意：这是回答QQ平台的问题，请注意违禁词，回答要简洁明了，直接给出答案，不需要过多解释。"
+                    combined_question = f"用户的问题是：{question}\n\n请结合以下搜索信息回答用户问题：\n{''.join(search_info)}\n\n注意：这是回答QQ平台的问题，请注意违禁词，避免涉政，涉黄，暴力，血腥，反人类，反人伦。\n\n可以详细的回答用户为什么是这个答案，要简洁明了，可以解释原因"
                     
                     # 4. 调用DeepSeek-3.2API
                     deepseek_url = "https://api.jkyai.top/API/depsek3.2.php"
