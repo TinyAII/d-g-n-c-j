@@ -678,7 +678,8 @@ class Main(Star):
             search_url = "https://uapis.cn/api/v1/search/aggregate"
             search_params = {
                 "query": question,
-                "timeout_ms": 30000
+                "timeout_ms": 30000,
+                "sort": "date"  # 按日期排序
             }
             
             timeout = aiohttp.ClientTimeout(total=60)
